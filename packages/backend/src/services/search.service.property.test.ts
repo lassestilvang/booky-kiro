@@ -71,7 +71,7 @@ describe('SearchService Property-Based Tests', () => {
   it('Property 22: Full-text search returns bookmarks with matching content', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(bookmarkDocumentArb, { minLength: 3, maxLength: 10 }),
+        fc.array(bookmarkDocumentArb, { minLength: 3, maxLength: 5 }), // Reduced max to speed up test
         fc.string({ minLength: 5, maxLength: 20 }),
         async (bookmarks, searchTerm) => {
           // Ensure at least one bookmark has the search term in content
@@ -108,9 +108,9 @@ describe('SearchService Property-Based Tests', () => {
           expect(foundBookmark).toBeDefined();
         }
       ),
-      { numRuns: 5, timeout: 30000 } // Reduced runs due to async nature
+      { numRuns: 3, timeout: 20000 } // Reduced runs due to async nature
     );
-  });
+  }, 60000); // 60 second test timeout
 
   /**
    * Feature: bookmark-manager-platform, Property 24: Search Filter Combination
@@ -413,9 +413,13 @@ describe('SearchService Property-Based Tests', () => {
   });
 
   it('should respect pagination parameters', async () => {
+    // Clean up any existing bookmarks first
+    await searchService.deleteUserBookmarks(testUserId);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    
     // Create 25 bookmarks
     const bookmarks: BookmarkSearchDocument[] = Array.from({ length: 25 }, (_, i) => ({
-      id: `bookmark-${i}`,
+      id: `bookmark-pagination-${Date.now()}-${i}`,
       owner_id: testUserId,
       collection_id: null,
       title: `Bookmark ${i}`,

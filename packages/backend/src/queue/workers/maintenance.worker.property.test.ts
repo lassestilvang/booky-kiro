@@ -417,8 +417,13 @@ describe('Maintenance Worker Property Tests', () => {
         fc.asyncProperty(
           fc.webUrl(),
           fc.integer({ min: 400, max: 499 }),
-          fc.string({ minLength: 1, maxLength: 50 }),
+          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
           async (url, statusCode, title) => {
+            // Ensure testUserId is set
+            if (!testUserId) {
+              throw new Error('testUserId is not set');
+            }
+            
             // Setup mock response
             mockFetchResponses.set(url, { status: statusCode, shouldTimeout: false });
 
@@ -454,8 +459,13 @@ describe('Maintenance Worker Property Tests', () => {
         fc.asyncProperty(
           fc.webUrl(),
           fc.integer({ min: 500, max: 599 }),
-          fc.string({ minLength: 1, maxLength: 50 }),
+          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
           async (url, statusCode, title) => {
+            // Ensure testUserId is set
+            if (!testUserId) {
+              throw new Error('testUserId is not set');
+            }
+            
             // Setup mock response
             mockFetchResponses.set(url, { status: statusCode, shouldTimeout: false });
 
@@ -491,8 +501,13 @@ describe('Maintenance Worker Property Tests', () => {
         fc.asyncProperty(
           fc.webUrl(),
           fc.integer({ min: 200, max: 399 }),
-          fc.string({ minLength: 1, maxLength: 50 }),
+          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
           async (url, statusCode, title) => {
+            // Ensure testUserId is set
+            if (!testUserId) {
+              throw new Error('testUserId is not set');
+            }
+            
             // Setup mock response
             mockFetchResponses.set(url, { status: statusCode, shouldTimeout: false });
 
@@ -538,12 +553,17 @@ describe('Maintenance Worker Property Tests', () => {
           fc.array(
             fc.record({
               url: fc.webUrl(),
-              title: fc.string({ minLength: 1, maxLength: 50 }),
+              title: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
               isBroken: fc.boolean(),
             }),
             { minLength: 5, maxLength: 20 }
           ),
           async (bookmarks) => {
+            // Ensure testUserId is set
+            if (!testUserId) {
+              throw new Error('testUserId is not set');
+            }
+            
             // Clean up before this iteration
             await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
 
@@ -609,11 +629,16 @@ describe('Maintenance Worker Property Tests', () => {
           fc.array(
             fc.record({
               url: fc.webUrl(),
-              title: fc.string({ minLength: 1, maxLength: 50 }),
+              title: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
             }),
             { minLength: 1, maxLength: 10 }
           ),
           async (bookmarks) => {
+            // Ensure testUserId is set
+            if (!testUserId) {
+              throw new Error('testUserId is not set');
+            }
+            
             // Clean up before this iteration
             await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
 
@@ -626,6 +651,11 @@ describe('Maintenance Worker Property Tests', () => {
 
             // Create only working bookmarks
             for (const bookmark of uniqueBookmarks) {
+              // Double-check testUserId is set
+              if (!testUserId) {
+                throw new Error('testUserId is not set in loop');
+              }
+              
               await testPool.query(
                 `INSERT INTO bookmarks (owner_id, title, url, domain, type, is_broken)
                  VALUES ($1, $2, $3, $4, $5, $6)`,

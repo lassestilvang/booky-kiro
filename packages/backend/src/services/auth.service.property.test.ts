@@ -258,6 +258,9 @@ describe('AuthService Property-Based Tests', () => {
             password: userData.password,
           });
 
+          // Wait 1 second to ensure different iat timestamp
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
           // Use refresh token to get new access token
           const newAccessToken = await authService.refreshAccessToken(
             tokens.refreshToken

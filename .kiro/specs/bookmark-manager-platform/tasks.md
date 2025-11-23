@@ -262,13 +262,13 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - **Property 68: Broken Link Filtering**
   - **Validates: Requirements 20.1, 20.2, 20.3, 20.5**
 
-- [-] 16. Checkpoint - Ensure all tests pass
+- [x] 16. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 6: Pro Features - Highlights and Annotations
 
-- [ ] 17. Implement highlights system
-- [ ] 17.1 Create highlight CRUD endpoints
+- [x] 17. Implement highlights system
+- [x] 17.1 Create highlight CRUD endpoints
   - GET /v1/highlights - list highlights
   - POST /v1/highlights - create highlight
   - PUT /v1/highlights/:id - update highlight
@@ -276,37 +276,37 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Enforce Pro tier access
   - _Requirements: 10.1, 10.3_
 
-- [ ] 17.2 Write property tests for highlights
+- [x] 17.2 Write property tests for highlights
   - **Property 31: Highlight Storage Completeness**
   - **Property 32: Highlight Color Update**
   - **Property 16: Highlight Creation with Context**
   - **Validates: Requirements 10.1, 10.3, 6.4**
 
-- [ ] 17.3 Integrate highlights with search
+- [x] 17.3 Integrate highlights with search
   - Index highlight text and annotations
   - Include highlights in search results
   - _Requirements: 10.4_
 
-- [ ] 17.4 Write property test for highlight search
+- [x] 17.4 Write property test for highlight search
   - **Property 33: Highlight Search Integration**
   - **Validates: Requirements 10.4**
 
 ## Phase 7: Pro Features - File Uploads
 
-- [ ] 18. Implement file upload system
-- [ ] 18.1 Create file upload endpoints
+- [x] 18. Implement file upload system
+- [x] 18.1 Create file upload endpoints
   - POST /v1/files/upload - upload file
   - GET /v1/files/:id - retrieve file
   - DELETE /v1/files/:id - delete file
   - Enforce Pro tier access and size limits
   - _Requirements: 15.1, 15.3_
 
-- [ ] 18.2 Write property tests for file uploads
+- [x] 18.2 Write property tests for file uploads
   - **Property 47: File Upload Storage**
   - **Property 49: File Serving**
   - **Validates: Requirements 15.1, 15.3**
 
-- [ ] 18.3 Implement PDF text extraction
+- [x] 18.3 Implement PDF text extraction
   - Extract text from uploaded PDFs
   - Index PDF content for full-text search
   - _Requirements: 15.2_

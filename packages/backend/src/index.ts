@@ -8,6 +8,8 @@ import { createCollectionRoutes } from './routes/collection.routes.js';
 import { createBookmarkRoutes } from './routes/bookmark.routes.js';
 import { createTagRoutes } from './routes/tag.routes.js';
 import { createSearchRoutes } from './routes/search.routes.js';
+import { createHighlightRoutes } from './routes/highlight.routes.js';
+import { createFileRoutes } from './routes/file.routes.js';
 import { AuthService } from './services/auth.service.js';
 import { UserService } from './services/user.service.js';
 import { OAuthService } from './services/oauth.service.js';
@@ -15,10 +17,16 @@ import { CollectionService } from './services/collection.service.js';
 import { BookmarkService } from './services/bookmark.service.js';
 import { TagService } from './services/tag.service.js';
 import { SearchService } from './services/search.service.js';
+import { HighlightService } from './services/highlight.service.js';
+import { FileService } from './services/file.service.js';
 import { UserRepository } from './repositories/user.repository.js';
 import { CollectionRepository } from './repositories/collection.repository.js';
 import { BookmarkRepository } from './repositories/bookmark.repository.js';
 import { TagRepository } from './repositories/tag.repository.js';
+import { HighlightRepository } from './repositories/highlight.repository.js';
+import { FileRepository } from './repositories/file.repository.js';
+import { getStorageClient } from './utils/storage.js';
+import { indexQueue } from './queue/config.js';
 import { createAuthMiddleware } from './middleware/auth.middleware.js';
 import { createRateLimitMiddleware } from './middleware/rate-limit.middleware.js';
 import { initializeSearchIndex, checkSearchHealth } from './db/search.config.js';
@@ -67,6 +75,11 @@ const userRepository = new UserRepository(pool);
 const collectionRepository = new CollectionRepository(pool);
 const bookmarkRepository = new BookmarkRepository(pool);
 const tagRepository = new TagRepository(pool);
+const highlightRepository = new HighlightRepository(pool);
+const fileRepository = new FileRepository(pool);
+
+// Initialize storage client
+const storageClient = getStorageClient();
 
 // Initialize services
 const authService = new AuthService(
@@ -82,6 +95,8 @@ const collectionService = new CollectionService(collectionRepository, bookmarkRe
 const bookmarkService = new BookmarkService(bookmarkRepository, tagRepository);
 const tagService = new TagService(tagRepository);
 const searchService = new SearchService();
+const highlightService = new HighlightService(highlightRepository, bookmarkRepository, searchService);
+const fileService = new FileService(fileRepository, bookmarkRepository, storageClient, indexQueue);
 
 // Create Express app
 const app: Application = express();
@@ -103,6 +118,8 @@ app.use('/v1/collections', createAuthMiddleware(authService), createCollectionRo
 app.use('/v1/bookmarks', createAuthMiddleware(authService), createBookmarkRoutes(bookmarkService));
 app.use('/v1/tags', createAuthMiddleware(authService), createTagRoutes(tagService));
 app.use('/v1/search', createAuthMiddleware(authService), createSearchRoutes(searchService));
+app.use('/v1/highlights', createHighlightRoutes(highlightService, authService));
+app.use('/v1/files', createAuthMiddleware(authService), createFileRoutes(fileService));
 
 // Start server
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -112,6 +129,10 @@ async function startServer() {
     // Connect to Redis
     await redis.connect();
     console.log('Connected to Redis');
+
+    // Initialize storage client
+    await storageClient.initialize();
+    console.log('Storage client initialized');
 
     // Initialize MeiliSearch index
     const searchHealthy = await checkSearchHealth();

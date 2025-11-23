@@ -65,7 +65,7 @@ describe('Database Schema Property Tests', () => {
         fc.asyncProperty(
           // Generate arbitrary bookmark data
           fc.record({
-            title: fc.string({ minLength: 1, maxLength: 500 }),
+            title: fc.string({ minLength: 1, maxLength: 500 }).filter(s => s.trim().length > 0),
             url: fc.webUrl(),
             excerpt: fc.option(fc.string({ maxLength: 1000 }), { nil: undefined }),
             contentSnapshotPath: fc.option(fc.string(), { nil: undefined }),

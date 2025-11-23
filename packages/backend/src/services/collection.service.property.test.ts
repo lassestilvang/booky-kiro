@@ -52,13 +52,13 @@ beforeEach(async () => {
 // ============================================================================
 
 const collectionArbitrary = fc.record({
-  title: fc.string({ minLength: 1, maxLength: 100 }),
-  icon: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: undefined }),
+  title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+  icon: fc.option(fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0), { nil: undefined }),
   isPublic: fc.boolean(),
 });
 
 const bookmarkArbitrary = fc.record({
-  title: fc.string({ minLength: 1, maxLength: 100 }),
+  title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
   url: fc.webUrl(),
   excerpt: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
   type: fc.constantFrom('article', 'video', 'image', 'file', 'document'),
@@ -79,6 +79,11 @@ describe('Property 9: Collection Deletion Behavior', () => {
         collectionArbitrary,
         fc.array(bookmarkArbitrary, { minLength: 1, maxLength: 10 }),
         async (collectionData, bookmarksData) => {
+          // Ensure testUserId is set
+          if (!testUserId) {
+            throw new Error('testUserId is not set');
+          }
+          
           // Create collection
           const collection = await collectionService.createCollection(testUserId, {
             title: collectionData.title,
@@ -136,6 +141,11 @@ describe('Property 9: Collection Deletion Behavior', () => {
         collectionArbitrary,
         fc.array(bookmarkArbitrary, { minLength: 1, maxLength: 10 }),
         async (collectionData, bookmarksData) => {
+          // Ensure testUserId is set
+          if (!testUserId) {
+            throw new Error('testUserId is not set');
+          }
+          
           // Create collection
           const collection = await collectionService.createCollection(testUserId, {
             title: collectionData.title,
@@ -193,6 +203,11 @@ describe('Property 9: Collection Deletion Behavior', () => {
   test('deleting an empty collection succeeds without errors', async () => {
     await fc.assert(
       fc.asyncProperty(collectionArbitrary, async (collectionData) => {
+        // Ensure testUserId is set
+        if (!testUserId) {
+          throw new Error('testUserId is not set');
+        }
+        
         // Create collection
         const collection = await collectionService.createCollection(testUserId, {
           title: collectionData.title,

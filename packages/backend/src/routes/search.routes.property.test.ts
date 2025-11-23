@@ -143,6 +143,11 @@ async function createTestBookmark(
   tags: string[] = [],
   type: string = 'article'
 ): Promise<string> {
+  // Validate userId
+  if (!userId) {
+    throw new Error('userId is required');
+  }
+  
   const result = await pool.query(
     'INSERT INTO bookmarks (owner_id, url, title, type, domain, excerpt) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
     [userId, url, title, type, new URL(url).hostname, `Excerpt for ${title}`]

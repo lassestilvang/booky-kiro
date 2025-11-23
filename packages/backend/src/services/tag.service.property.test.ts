@@ -61,12 +61,11 @@ describe('Tag Service Property Tests', () => {
     }
 
     // Create a test user
-    const user = await userRepository.create({
-      email: `test-tag-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`,
-      passwordHash: 'hashed_password',
-      name: 'Test User',
-      plan: 'free',
-    });
+    const user = await userRepository.createWithPassword(
+      `test-tag-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`,
+      'hashed_password',
+      'Test User'
+    );
     testUserId = user.id;
   });
 
@@ -152,6 +151,11 @@ describe('Tag Service Property Tests', () => {
         // Generate number of bookmarks per tag (1-3)
         fc.integer({ min: 1, max: 3 }),
         async (numSourceTags, bookmarksPerTag) => {
+          // Ensure testUserId is set
+          if (!testUserId) {
+            throw new Error('testUserId is not set');
+          }
+          
           // Create source tags
           const sourceTags = [];
           for (let i = 0; i < numSourceTags; i++) {

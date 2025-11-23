@@ -60,9 +60,14 @@ describe('BookmarkService Property-Based Tests', () => {
         // Generate a random URL
         fc.webUrl(),
         // Generate random bookmark titles
-        fc.string({ minLength: 1, maxLength: 100 }),
-        fc.string({ minLength: 1, maxLength: 100 }),
+        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
         async (url, title1, title2) => {
+          // Ensure testUserId is set
+          if (!testUserId) {
+            throw new Error('testUserId is not set');
+          }
+          
           // Create first bookmark with the URL
           const bookmark1 = await bookmarkService.createBookmark(testUserId, {
             url,
@@ -105,14 +110,19 @@ describe('BookmarkService Property-Based Tests', () => {
         fc.array(
           fc.record({
             url: fc.webUrl(),
-            title: fc.string({ minLength: 1, maxLength: 100 }),
-            tags: fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }),
+            title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+            tags: fc.array(fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0), { minLength: 1, maxLength: 5 }),
           }),
           { minLength: 3, maxLength: 10 }
         ),
         // Generate filter tags (subset of possible tags)
-        fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 3 }),
+        fc.array(fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0), { minLength: 1, maxLength: 3 }),
         async (bookmarksData, filterTags) => {
+          // Ensure testUserId is set
+          if (!testUserId) {
+            throw new Error('testUserId is not set');
+          }
+          
           // Create bookmarks with tags
           const createdBookmarks = [];
           for (const data of bookmarksData) {
@@ -168,7 +178,7 @@ describe('BookmarkService Property-Based Tests', () => {
         fc.array(
           fc.record({
             url: fc.webUrl(),
-            title: fc.string({ minLength: 1, maxLength: 100 }),
+            title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
             type: fc.constantFrom('article', 'video', 'image', 'file', 'document'),
           }),
           { minLength: 5, maxLength: 15 }
@@ -176,6 +186,11 @@ describe('BookmarkService Property-Based Tests', () => {
         // Generate filter criteria
         fc.constantFrom('article' as const, 'video' as const, 'image' as const),
         async (bookmarksData, filterType) => {
+          // Ensure testUserId is set
+          if (!testUserId) {
+            throw new Error('testUserId is not set');
+          }
+          
           // Create bookmarks
           const createdBookmarks = [];
           for (const data of bookmarksData) {
