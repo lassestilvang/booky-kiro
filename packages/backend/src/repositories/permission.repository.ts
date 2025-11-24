@@ -13,7 +13,9 @@ export class CollectionPermissionRepository extends BaseRepository<CollectionPer
   /**
    * Find permissions by collection ID
    */
-  async findByCollection(collectionId: string): Promise<CollectionPermission[]> {
+  async findByCollection(
+    collectionId: string
+  ): Promise<CollectionPermission[]> {
     const result = await this.pool.query(
       'SELECT * FROM collection_permissions WHERE collection_id = $1 ORDER BY created_at',
       [collectionId]
@@ -49,7 +51,9 @@ export class CollectionPermissionRepository extends BaseRepository<CollectionPer
   /**
    * Create or update permission
    */
-  async upsert(permission: Partial<CollectionPermission>): Promise<CollectionPermission> {
+  async upsert(
+    permission: Partial<CollectionPermission>
+  ): Promise<CollectionPermission> {
     const result = await this.pool.query(
       `INSERT INTO collection_permissions (collection_id, user_id, role, created_at)
        VALUES ($1, $2, $3, NOW())
@@ -64,7 +68,10 @@ export class CollectionPermissionRepository extends BaseRepository<CollectionPer
   /**
    * Delete permission by collection and user
    */
-  async deleteByCollectionAndUser(collectionId: string, userId: string): Promise<boolean> {
+  async deleteByCollectionAndUser(
+    collectionId: string,
+    userId: string
+  ): Promise<boolean> {
     const result = await this.pool.query(
       'DELETE FROM collection_permissions WHERE collection_id = $1 AND user_id = $2',
       [collectionId, userId]
@@ -76,9 +83,10 @@ export class CollectionPermissionRepository extends BaseRepository<CollectionPer
    * Delete all permissions for a collection
    */
   async deleteByCollection(collectionId: string): Promise<void> {
-    await this.pool.query('DELETE FROM collection_permissions WHERE collection_id = $1', [
-      collectionId,
-    ]);
+    await this.pool.query(
+      'DELETE FROM collection_permissions WHERE collection_id = $1',
+      [collectionId]
+    );
   }
 
   /**

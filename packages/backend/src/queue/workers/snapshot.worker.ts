@@ -13,7 +13,7 @@ import { BookmarkRepository } from '../../repositories/bookmark.repository.js';
 
 /**
  * Snapshot Worker
- * 
+ *
  * Processes snapshot jobs for Pro users:
  * 1. Fetch page HTML with Playwright
  * 2. Extract main content (remove ads, nav, etc.)
@@ -66,11 +66,14 @@ async function getBrowser(): Promise<Browser> {
 /**
  * Fetch page HTML and screenshot
  */
-async function fetchPage(url: string): Promise<{ html: string; screenshot: Buffer }> {
+async function fetchPage(
+  url: string
+): Promise<{ html: string; screenshot: Buffer }> {
   const browser = await getBrowser();
   const page: Page = await browser.newPage({
     viewport: { width: 1280, height: 720 },
-    userAgent: 'Mozilla/5.0 (compatible; BookmarkManager/1.0; +https://bookmarkmanager.com)',
+    userAgent:
+      'Mozilla/5.0 (compatible; BookmarkManager/1.0; +https://bookmarkmanager.com)',
   });
 
   try {
@@ -290,7 +293,10 @@ async function processSnapshotJob(job: Job<SnapshotJobData>) {
       message: 'Snapshot created successfully',
     };
   } catch (error) {
-    console.error(`Error processing snapshot for bookmark ${bookmarkId}:`, error);
+    console.error(
+      `Error processing snapshot for bookmark ${bookmarkId}:`,
+      error
+    );
     throw error; // Let BullMQ handle retries
   }
 }
@@ -325,13 +331,13 @@ snapshotWorker.on('error', (err) => {
 // Graceful shutdown
 export async function closeSnapshotWorker() {
   await snapshotWorker.close();
-  
+
   // Close browser instance
   if (browserInstance) {
     await browserInstance.close();
     browserInstance = null;
   }
-  
+
   // Close database pool
   await dbPool.end();
 }

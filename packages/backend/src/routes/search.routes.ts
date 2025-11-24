@@ -31,12 +31,28 @@ export function createSearchRoutes(searchService: SearchService): Router {
       // Parse query parameters
       const query: SearchQuery = {
         q: req.query.q as string,
-        tags: req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags : [req.query.tags]) as string[] : undefined,
-        type: req.query.type ? (Array.isArray(req.query.type) ? req.query.type : [req.query.type]) as string[] : undefined,
-        domain: req.query.domain ? (Array.isArray(req.query.domain) ? req.query.domain : [req.query.domain]) as string[] : undefined,
+        tags: req.query.tags
+          ? ((Array.isArray(req.query.tags)
+              ? req.query.tags
+              : [req.query.tags]) as string[])
+          : undefined,
+        type: req.query.type
+          ? ((Array.isArray(req.query.type)
+              ? req.query.type
+              : [req.query.type]) as string[])
+          : undefined,
+        domain: req.query.domain
+          ? ((Array.isArray(req.query.domain)
+              ? req.query.domain
+              : [req.query.domain]) as string[])
+          : undefined,
         collection: req.query.collection as string,
-        dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined,
-        dateTo: req.query.dateTo ? new Date(req.query.dateTo as string) : undefined,
+        dateFrom: req.query.dateFrom
+          ? new Date(req.query.dateFrom as string)
+          : undefined,
+        dateTo: req.query.dateTo
+          ? new Date(req.query.dateTo as string)
+          : undefined,
         fulltext: req.query.fulltext === 'true',
         page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 20,
@@ -48,7 +64,8 @@ export function createSearchRoutes(searchService: SearchService): Router {
         return res.status(403).json({
           error: {
             code: 'PRO_FEATURE_REQUIRED',
-            message: 'Full-text search is a Pro feature. Please upgrade your plan.',
+            message:
+              'Full-text search is a Pro feature. Please upgrade your plan.',
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
           },
@@ -56,7 +73,11 @@ export function createSearchRoutes(searchService: SearchService): Router {
       }
 
       // Perform search
-      const results = await searchService.search(query, userId, userPlan === 'pro');
+      const results = await searchService.search(
+        query,
+        userId,
+        userPlan === 'pro'
+      );
 
       res.status(200).json(results);
     } catch (error) {
@@ -92,7 +113,9 @@ export function createSearchRoutes(searchService: SearchService): Router {
       }
 
       const query = req.query.q as string;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 5;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 5;
 
       if (!query) {
         return res.status(400).json({
@@ -105,7 +128,11 @@ export function createSearchRoutes(searchService: SearchService): Router {
         });
       }
 
-      const suggestions = await searchService.getSuggestions(query, userId, limit);
+      const suggestions = await searchService.getSuggestions(
+        query,
+        userId,
+        limit
+      );
 
       res.status(200).json({ suggestions });
     } catch (error) {
@@ -140,7 +167,9 @@ export function createSearchRoutes(searchService: SearchService): Router {
         });
       }
 
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 20;
 
       const tags = await searchService.getPopularTags(userId, limit);
 

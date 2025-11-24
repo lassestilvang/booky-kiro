@@ -5,12 +5,18 @@ import { z } from 'zod';
 // Validation schemas
 const createTagSchema = z.object({
   name: z.string().min(1).max(100),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 
 const updateTagSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 
 const mergeTagsSchema = z.object({
@@ -110,10 +116,14 @@ export function createTagRoutes(tagService: TagService): Router {
           },
         });
       } else if (error instanceof Error) {
-        const statusCode = error.message === 'Tag with this name already exists' ? 409 : 400;
+        const statusCode =
+          error.message === 'Tag with this name already exists' ? 409 : 400;
         res.status(statusCode).json({
           error: {
-            code: error.message === 'Tag with this name already exists' ? 'TAG_EXISTS' : 'CREATE_FAILED',
+            code:
+              error.message === 'Tag with this name already exists'
+                ? 'TAG_EXISTS'
+                : 'CREATE_FAILED',
             message: error.message,
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
@@ -172,7 +182,10 @@ export function createTagRoutes(tagService: TagService): Router {
         const statusCode = error.message === 'Access denied' ? 403 : 500;
         res.status(statusCode).json({
           error: {
-            code: error.message === 'Access denied' ? 'ACCESS_DENIED' : 'INTERNAL_ERROR',
+            code:
+              error.message === 'Access denied'
+                ? 'ACCESS_DENIED'
+                : 'INTERNAL_ERROR',
             message: error.message,
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
@@ -213,7 +226,11 @@ export function createTagRoutes(tagService: TagService): Router {
       const data = updateTagSchema.parse(req.body);
 
       // Update tag
-      const tag = await tagService.updateTag(req.params.id, req.user.userId, data);
+      const tag = await tagService.updateTag(
+        req.params.id,
+        req.user.userId,
+        data
+      );
 
       res.status(200).json({
         tag,
@@ -350,12 +367,11 @@ export function createTagRoutes(tagService: TagService): Router {
           },
         });
       } else if (error instanceof Error) {
-        const statusCode =
-          error.message.includes('not found')
-            ? 404
-            : error.message === 'Access denied'
-              ? 403
-              : 400;
+        const statusCode = error.message.includes('not found')
+          ? 404
+          : error.message === 'Access denied'
+            ? 403
+            : 400;
         res.status(statusCode).json({
           error: {
             code: 'MERGE_FAILED',

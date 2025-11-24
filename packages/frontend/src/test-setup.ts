@@ -1,5 +1,5 @@
 // Setup file for vitest tests
-import { beforeAll } from 'vitest';
+// Test setup file
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -26,9 +26,17 @@ const localStorageMock = (() => {
   };
 })();
 
-beforeAll(() => {
-  Object.defineProperty(global, 'localStorage', {
+// Set up localStorage on both global and window
+Object.defineProperty(global, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+  configurable: true,
+});
+
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage', {
     value: localStorageMock,
     writable: true,
+    configurable: true,
   });
-});
+}

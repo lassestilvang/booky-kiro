@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { HighlightService } from '../services/highlight.service.js';
-import { createAuthMiddleware, requireProPlan } from '../middleware/auth.middleware.js';
+import {
+  createAuthMiddleware,
+  requireProPlan,
+} from '../middleware/auth.middleware.js';
 import { AuthService } from '../services/auth.service.js';
 import {
   CreateHighlightRequest,
@@ -30,7 +33,11 @@ export function createHighlightRoutes(
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
 
-      const result = await highlightService.getUserHighlights(userId, page, limit);
+      const result = await highlightService.getUserHighlights(
+        userId,
+        page,
+        limit
+      );
 
       res.json(result);
     } catch (error) {
@@ -54,7 +61,10 @@ export function createHighlightRoutes(
       const userId = req.user!.userId;
       const highlightId = req.params.id;
 
-      const highlight = await highlightService.getHighlightById(highlightId, userId);
+      const highlight = await highlightService.getHighlightById(
+        highlightId,
+        userId
+      );
 
       if (!highlight) {
         res.status(404).json({
@@ -107,7 +117,8 @@ export function createHighlightRoutes(
         res.status(400).json({
           error: {
             code: 'INVALID_INPUT',
-            message: 'Missing required fields: bookmarkId, textSelected, positionContext',
+            message:
+              'Missing required fields: bookmarkId, textSelected, positionContext',
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
           },
@@ -135,7 +146,8 @@ export function createHighlightRoutes(
         res.status(403).json({
           error: {
             code: 'ACCESS_DENIED',
-            message: 'You do not have permission to create highlights for this bookmark',
+            message:
+              'You do not have permission to create highlights for this bookmark',
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
           },
@@ -164,7 +176,11 @@ export function createHighlightRoutes(
       const highlightId = req.params.id;
       const data: UpdateHighlightRequest = req.body;
 
-      const highlight = await highlightService.updateHighlight(highlightId, userId, data);
+      const highlight = await highlightService.updateHighlight(
+        highlightId,
+        userId,
+        data
+      );
 
       res.json(highlight);
     } catch (error: any) {

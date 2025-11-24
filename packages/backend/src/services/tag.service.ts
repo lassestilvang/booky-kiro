@@ -1,4 +1,9 @@
-import { Tag, CreateTagRequest, UpdateTagRequest, MergeTagsRequest } from '@bookmark-manager/shared';
+import {
+  Tag,
+  CreateTagRequest,
+  UpdateTagRequest,
+  MergeTagsRequest,
+} from '@bookmark-manager/shared';
 import { TagRepository } from '../repositories/tag.repository.js';
 
 /**
@@ -37,7 +42,10 @@ export class TagService {
    */
   async createTag(userId: string, data: CreateTagRequest): Promise<Tag> {
     // Check if tag with same normalized name already exists
-    const existing = await this.tagRepository.findByNormalizedName(userId, data.name);
+    const existing = await this.tagRepository.findByNormalizedName(
+      userId,
+      data.name
+    );
     if (existing) {
       throw new Error('Tag with this name already exists');
     }
@@ -48,7 +56,11 @@ export class TagService {
   /**
    * Update a tag
    */
-  async updateTag(tagId: string, userId: string, data: UpdateTagRequest): Promise<Tag> {
+  async updateTag(
+    tagId: string,
+    userId: string,
+    data: UpdateTagRequest
+  ): Promise<Tag> {
     // Verify ownership
     const tag = await this.tagRepository.findById(tagId);
     if (!tag) {
@@ -61,8 +73,10 @@ export class TagService {
 
     // If name is being updated, check for conflicts
     if (data.name) {
-      const normalizedName = data.name.trim().toLowerCase();
-      const existing = await this.tagRepository.findByNormalizedName(userId, data.name);
+      const existing = await this.tagRepository.findByNormalizedName(
+        userId,
+        data.name
+      );
       if (existing && existing.id !== tagId) {
         throw new Error('Tag with this name already exists');
       }
@@ -132,7 +146,10 @@ export class TagService {
   /**
    * Get popular tags for a user
    */
-  async getPopularTags(userId: string, limit: number = 10): Promise<Array<Tag & { usageCount: number }>> {
+  async getPopularTags(
+    userId: string,
+    limit: number = 10
+  ): Promise<Array<Tag & { usageCount: number }>> {
     return this.tagRepository.getPopularTags(userId, limit);
   }
 

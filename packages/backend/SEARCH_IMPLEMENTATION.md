@@ -22,6 +22,7 @@ This document describes the implementation of the search engine infrastructure f
 Comprehensive search service with the following capabilities:
 
 #### Document Management
+
 - `indexBookmark()`: Add a bookmark to the search index
 - `updateBookmark()`: Update an indexed bookmark
 - `deleteBookmark()`: Remove a bookmark from the index
@@ -29,6 +30,7 @@ Comprehensive search service with the following capabilities:
 - `deleteUserBookmarks()`: Remove all bookmarks for a user
 
 #### Search Operations
+
 - `search()`: Main search function with support for:
   - Full-text search across multiple fields
   - Tag filtering (AND logic - all tags must match)
@@ -42,6 +44,7 @@ Comprehensive search service with the following capabilities:
   - Snippet highlighting
 
 #### Helper Functions
+
 - `getSuggestions()`: Autocomplete suggestions
 - `getPopularTags()`: Get most used tags for a user
 
@@ -50,6 +53,7 @@ Comprehensive search service with the following capabilities:
 Comprehensive test suite validating all search correctness properties:
 
 #### Property Tests
+
 1. **Property 22: Full-Text Search Coverage** - Validates that Pro users can search within page content
 2. **Property 24: Search Filter Combination** - Validates that multiple filters work together correctly
 3. **Property 25: Search Matching Modes** - Validates fuzzy matching for misspelled terms
@@ -57,6 +61,7 @@ Comprehensive test suite validating all search correctness properties:
 5. **Property 57: Fuzzy Search Matching** - Validates configurable edit distance for typos
 
 #### Unit Tests
+
 - Empty results for non-existent terms
 - Date range filtering
 - Pagination correctness
@@ -75,6 +80,7 @@ MEILISEARCH_API_KEY=masterKey123
 ### Docker Service
 
 MeiliSearch is configured in `docker-compose.yml`:
+
 - Image: `getmeili/meilisearch:v1.5`
 - Port: 7700
 - Master Key: `masterKey123` (development only)
@@ -87,7 +93,9 @@ The search index is automatically initialized on server startup in `src/index.ts
 // Initialize MeiliSearch index
 const searchHealthy = await checkSearchHealth();
 if (!searchHealthy) {
-  console.warn('MeiliSearch is not available - search functionality will be limited');
+  console.warn(
+    'MeiliSearch is not available - search functionality will be limited'
+  );
 } else {
   await initializeSearchIndex();
   console.log('MeiliSearch initialized successfully');
@@ -97,12 +105,14 @@ if (!searchHealthy) {
 ## Search Features
 
 ### Free Tier
+
 - Search in title, excerpt, domain, tags, and highlights
 - Basic filtering by tags, type, domain, collection, date range
 - Fuzzy matching for typos
 - Pagination and sorting
 
 ### Pro Tier
+
 - All Free tier features
 - Full-text search in page content
 - Search in PDF text and EPUB text (when indexed)

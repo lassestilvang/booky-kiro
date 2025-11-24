@@ -193,6 +193,7 @@ export function createExportRoutes(exportService: ExportService): Router {
 /**
  * Get content type for export format
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getContentType(format: string): string {
   switch (format) {
     case 'html':

@@ -1,4 +1,8 @@
-import { File, UploadFileRequest, UploadFileResponse } from '@bookmark-manager/shared';
+import {
+  File,
+  UploadFileRequest,
+  UploadFileResponse,
+} from '@bookmark-manager/shared';
 import { FileRepository } from '../repositories/file.repository.js';
 import { BookmarkRepository } from '../repositories/bookmark.repository.js';
 import { StorageClient } from '../utils/storage.js';
@@ -43,7 +47,10 @@ export class FileService {
     const s3Path = `uploads/${userId}/${fileId}${extension}`;
 
     // Get presigned upload URL (valid for 1 hour)
-    const uploadUrl = await this.storageClient.getPresignedUploadUrl(s3Path, 3600);
+    const uploadUrl = await this.storageClient.getPresignedUploadUrl(
+      s3Path,
+      3600
+    );
 
     // Create file record (size will be 0 initially, updated after upload)
     const file = await this.fileRepository.create({
@@ -85,7 +92,9 @@ export class FileService {
       // Delete the file from storage
       await this.storageClient.deleteFile(file.s3Path);
       await this.fileRepository.delete(fileId);
-      throw new Error(`File size exceeds limit of ${this.PRO_FILE_SIZE_LIMIT / (1024 * 1024)}MB`);
+      throw new Error(
+        `File size exceeds limit of ${this.PRO_FILE_SIZE_LIMIT / (1024 * 1024)}MB`
+      );
     }
 
     // Update file size
@@ -112,7 +121,9 @@ export class FileService {
 
     // Enforce size limit
     if (data.length > this.PRO_FILE_SIZE_LIMIT) {
-      throw new Error(`File size exceeds limit of ${this.PRO_FILE_SIZE_LIMIT / (1024 * 1024)}MB`);
+      throw new Error(
+        `File size exceeds limit of ${this.PRO_FILE_SIZE_LIMIT / (1024 * 1024)}MB`
+      );
     }
 
     // Verify bookmark ownership if provided
@@ -177,7 +188,10 @@ export class FileService {
   /**
    * Get file stream for download
    */
-  async getFileStream(fileId: string, userId: string): Promise<{ stream: Readable; file: File }> {
+  async getFileStream(
+    fileId: string,
+    userId: string
+  ): Promise<{ stream: Readable; file: File }> {
     const file = await this.getFile(fileId, userId);
 
     // Get file stream from storage
@@ -212,7 +226,11 @@ export class FileService {
   /**
    * List user files
    */
-  async listUserFiles(userId: string, page: number = 1, limit: number = 50): Promise<File[]> {
+  async listUserFiles(
+    userId: string,
+    page: number = 1,
+    limit: number = 50
+  ): Promise<File[]> {
     const offset = (page - 1) * limit;
     return await this.fileRepository.findByOwner(userId, limit, offset);
   }

@@ -6,8 +6,6 @@ import request from 'supertest';
 import { createSearchRoutes } from './search.routes.js';
 import { SearchService } from '../services/search.service.js';
 import { UserRepository } from '../repositories/user.repository.js';
-import { BookmarkRepository } from '../repositories/bookmark.repository.js';
-import { TagRepository } from '../repositories/tag.repository.js';
 import { AuthService } from '../services/auth.service.js';
 import { createAuthMiddleware } from '../middleware/auth.middleware.js';
 import * as crypto from 'crypto';
@@ -55,8 +53,6 @@ let app: Application;
 let authService: AuthService;
 let searchService: SearchService;
 let userRepository: UserRepository;
-let bookmarkRepository: BookmarkRepository;
-let tagRepository: TagRepository;
 
 beforeAll(async () => {
   // Use test database
@@ -70,8 +66,6 @@ beforeAll(async () => {
 
   // Initialize repositories and services
   userRepository = new UserRepository(pool);
-  bookmarkRepository = new BookmarkRepository(pool);
-  tagRepository = new TagRepository(pool);
   authService = new AuthService(
     userRepository,
     accessKeyPair.privateKey,
@@ -84,7 +78,11 @@ beforeAll(async () => {
   // Create Express app
   app = express();
   app.use(express.json());
-  app.use('/v1/search', createAuthMiddleware(authService), createSearchRoutes(searchService));
+  app.use(
+    '/v1/search',
+    createAuthMiddleware(authService),
+    createSearchRoutes(searchService)
+  );
 });
 
 afterAll(async () => {
@@ -111,7 +109,9 @@ beforeEach(async () => {
 /**
  * Helper function to create a test user and get auth token
  */
-async function createTestUser(plan: 'free' | 'pro' = 'free'): Promise<{ userId: string; token: string; email: string }> {
+async function createTestUser(
+  plan: 'free' | 'pro' = 'free'
+): Promise<{ userId: string; token: string; email: string }> {
   // Generate unique email
   const email = `test-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`;
   const password = 'TestPassword123';
@@ -147,7 +147,7 @@ async function createTestBookmark(
   if (!userId) {
     throw new Error('userId is required');
   }
-  
+
   const result = await pool.query(
     'INSERT INTO bookmarks (owner_id, url, title, type, domain, excerpt) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
     [userId, url, title, type, new URL(url).hostname, `Excerpt for ${title}`]
@@ -163,7 +163,10 @@ async function createTestBookmark(
     );
     const tagId = tagResult.rows[0].id;
 
-    await pool.query('INSERT INTO bookmark_tags (bookmark_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [bookmarkId, tagId]);
+    await pool.query(
+      'INSERT INTO bookmark_tags (bookmark_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [bookmarkId, tagId]
+    );
   }
 
   // Index in search
@@ -201,7 +204,10 @@ describe('Search API Property Tests', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          tags: fc.array(fc.constantFrom('javascript', 'typescript', 'react', 'node'), { minLength: 1, maxLength: 2 }),
+          tags: fc.array(
+            fc.constantFrom('javascript', 'typescript', 'react', 'node'),
+            { minLength: 1, maxLength: 2 }
+          ),
           type: fc.constantFrom('article', 'video', 'image'),
         }),
         async ({ tags, type }) => {
@@ -218,9 +224,21 @@ describe('Search API Property Tests', () => {
           );
 
           // Create non-matching bookmarks
-          await createTestBookmark(userId, 'https://example.com/wrong-tags', 'Wrong Tags', ['python'], type);
+          await createTestBookmark(
+            userId,
+            'https://example.com/wrong-tags',
+            'Wrong Tags',
+            ['python'],
+            type
+          );
 
-          await createTestBookmark(userId, 'https://example.com/wrong-type', 'Wrong Type', tags, 'document');
+          await createTestBookmark(
+            userId,
+            'https://example.com/wrong-type',
+            'Wrong Type',
+            tags,
+            'document'
+          );
 
           // Search with filters
           const response = await request(app)
@@ -246,7 +264,9 @@ describe('Search API Property Tests', () => {
           }
 
           // The matching bookmark should be in results
-          const matchingResult = response.body.results.find((r: any) => r.id === matchingBookmark);
+          const matchingResult = response.body.results.find(
+            (r: any) => r.id === matchingBookmark
+          );
           expect(matchingResult).toBeDefined();
         }
       ),
@@ -262,24 +282,27 @@ describe('Search API Property Tests', () => {
    */
   it('Property 56: Pro Full-Text Search Access - free users cannot use full-text search', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.string({ minLength: 1, maxLength: 50 }), async (searchQuery) => {
-        // Create free tier user
-        const { token } = await createTestUser('free');
+      fc.asyncProperty(
+        fc.string({ minLength: 1, maxLength: 50 }),
+        async (searchQuery) => {
+          // Create free tier user
+          const { token } = await createTestUser('free');
 
-        // Attempt full-text search
-        const response = await request(app)
-          .get('/v1/search')
-          .query({
-            q: searchQuery,
-            fulltext: 'true',
-          })
-          .set('Authorization', `Bearer ${token}`);
+          // Attempt full-text search
+          const response = await request(app)
+            .get('/v1/search')
+            .query({
+              q: searchQuery,
+              fulltext: 'true',
+            })
+            .set('Authorization', `Bearer ${token}`);
 
-        // Should be denied
-        expect(response.status).toBe(403);
-        expect(response.body.error).toBeDefined();
-        expect(response.body.error.code).toBe('PRO_FEATURE_REQUIRED');
-      }),
+          // Should be denied
+          expect(response.status).toBe(403);
+          expect(response.body.error).toBeDefined();
+          expect(response.body.error.code).toBe('PRO_FEATURE_REQUIRED');
+        }
+      ),
       { numRuns: 10 }
     );
   });
@@ -292,27 +315,34 @@ describe('Search API Property Tests', () => {
    */
   it('Property 56b: Pro Full-Text Search Access - pro users can use full-text search', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.string({ minLength: 1, maxLength: 50 }), async (searchQuery) => {
-        // Create Pro tier user
-        const { userId, token } = await createTestUser('pro');
+      fc.asyncProperty(
+        fc.string({ minLength: 1, maxLength: 50 }),
+        async (searchQuery) => {
+          // Create Pro tier user
+          const { userId, token } = await createTestUser('pro');
 
-        // Create a bookmark
-        await createTestBookmark(userId, 'https://example.com/test', 'Test Bookmark');
+          // Create a bookmark
+          await createTestBookmark(
+            userId,
+            'https://example.com/test',
+            'Test Bookmark'
+          );
 
-        // Attempt full-text search
-        const response = await request(app)
-          .get('/v1/search')
-          .query({
-            q: searchQuery,
-            fulltext: 'true',
-          })
-          .set('Authorization', `Bearer ${token}`);
+          // Attempt full-text search
+          const response = await request(app)
+            .get('/v1/search')
+            .query({
+              q: searchQuery,
+              fulltext: 'true',
+            })
+            .set('Authorization', `Bearer ${token}`);
 
-        // Should be allowed
-        expect(response.status).toBe(200);
-        expect(response.body.results).toBeDefined();
-        expect(Array.isArray(response.body.results)).toBe(true);
-      }),
+          // Should be allowed
+          expect(response.status).toBe(200);
+          expect(response.body.results).toBeDefined();
+          expect(Array.isArray(response.body.results)).toBe(true);
+        }
+      ),
       { numRuns: 10 }
     );
   });
@@ -359,7 +389,9 @@ describe('Search API Property Tests', () => {
 
               // If highlights exist, they should contain <mark> tags
               if (result.highlights.length > 0) {
-                const hasMarkTags = result.highlights.some((h: string) => h.includes('<mark>'));
+                const hasMarkTags = result.highlights.some((h: string) =>
+                  h.includes('<mark>')
+                );
                 expect(hasMarkTags).toBe(true);
               }
             }
@@ -388,7 +420,11 @@ describe('Search API Property Tests', () => {
 
     // Create multiple bookmarks
     for (let i = 0; i < 5; i++) {
-      await createTestBookmark(userId, `https://example.com/test${i}`, `Test Bookmark ${i}`);
+      await createTestBookmark(
+        userId,
+        `https://example.com/test${i}`,
+        `Test Bookmark ${i}`
+      );
     }
 
     // Search with pagination

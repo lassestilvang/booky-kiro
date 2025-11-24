@@ -4,17 +4,16 @@ import { Pool } from 'pg';
 import * as cheerio from 'cheerio';
 // pdf-parse needs to be imported dynamically due to ESM/CJS compatibility issues
 let pdfParse: any = null;
-import {
-  QUEUE_NAMES,
-  IndexJobData,
-  createRedisConnection,
-} from '../config.js';
+import { QUEUE_NAMES, IndexJobData, createRedisConnection } from '../config.js';
 import { BookmarkRepository } from '../../repositories/bookmark.repository.js';
-import { SearchService, BookmarkSearchDocument } from '../../services/search.service.js';
+import {
+  SearchService,
+  BookmarkSearchDocument,
+} from '../../services/search.service.js';
 
 /**
  * Index Worker
- * 
+ *
  * Processes content indexing jobs:
  * 1. Retrieve snapshot from S3/MinIO
  * 2. Extract text based on type (HTML, PDF, etc.)
@@ -90,7 +89,7 @@ async function extractPDFText(buffer: Buffer): Promise<string> {
       const module = await import('pdf-parse');
       pdfParse = module.default || module;
     }
-    
+
     const data = await pdfParse(buffer);
     return data.text;
   } catch (error) {
@@ -104,20 +103,22 @@ async function extractPDFText(buffer: Buffer): Promise<string> {
  * Removes excessive whitespace, normalizes line breaks, and trims
  */
 function cleanText(text: string): string {
-  return text
-    // Normalize line breaks
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    // Remove excessive whitespace
-    .replace(/[ \t]+/g, ' ')
-    // Remove excessive line breaks (more than 2)
-    .replace(/\n{3,}/g, '\n\n')
-    // Trim each line
-    .split('\n')
-    .map((line) => line.trim())
-    .join('\n')
-    // Trim overall
-    .trim();
+  return (
+    text
+      // Normalize line breaks
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      // Remove excessive whitespace
+      .replace(/[ \t]+/g, ' ')
+      // Remove excessive line breaks (more than 2)
+      .replace(/\n{3,}/g, '\n\n')
+      // Trim each line
+      .split('\n')
+      .map((line) => line.trim())
+      .join('\n')
+      // Trim overall
+      .trim()
+  );
 }
 
 /**
@@ -176,10 +177,11 @@ async function processIndexJob(job: Job<IndexJobData>) {
       created_at: Math.floor(bookmark.createdAt.getTime() / 1000),
       updated_at: Math.floor(bookmark.updatedAt.getTime() / 1000),
       has_snapshot: !!bookmark.contentSnapshotPath,
-      highlights_text: bookmark.highlights
-        .map((h) => `${h.textSelected} ${h.annotationMd || ''}`)
-        .join(' ')
-        .trim() || null,
+      highlights_text:
+        bookmark.highlights
+          .map((h) => `${h.textSelected} ${h.annotationMd || ''}`)
+          .join(' ')
+          .trim() || null,
     };
 
     // 6. Index document in search engine
@@ -197,7 +199,10 @@ async function processIndexJob(job: Job<IndexJobData>) {
       message: 'Content indexed successfully',
     };
   } catch (error) {
-    console.error(`Error processing index job for bookmark ${bookmarkId}:`, error);
+    console.error(
+      `Error processing index job for bookmark ${bookmarkId}:`,
+      error
+    );
     throw error; // Let BullMQ handle retries
   }
 }

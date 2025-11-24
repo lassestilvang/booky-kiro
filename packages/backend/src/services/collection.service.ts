@@ -29,16 +29,22 @@ export class CollectionService {
   /**
    * Get a single collection by ID
    */
-  async getCollectionById(collectionId: string, userId: string): Promise<Collection | null> {
+  async getCollectionById(
+    collectionId: string,
+    userId: string
+  ): Promise<Collection | null> {
     const collection = await this.collectionRepository.findById(collectionId);
-    
+
     if (!collection) {
       return null;
     }
 
     // Check if user is owner or has shared access
     if (collection.ownerId !== userId) {
-      const hasAccess = await this.permissionRepository.hasAccess(collectionId, userId);
+      const hasAccess = await this.permissionRepository.hasAccess(
+        collectionId,
+        userId
+      );
       if (!hasAccess) {
         throw new Error('Access denied');
       }
@@ -50,7 +56,10 @@ export class CollectionService {
   /**
    * Create a new collection
    */
-  async createCollection(userId: string, data: CreateCollectionRequest): Promise<Collection> {
+  async createCollection(
+    userId: string,
+    data: CreateCollectionRequest
+  ): Promise<Collection> {
     const collectionData: Partial<Collection> = {
       ownerId: userId,
       title: data.title,
@@ -79,7 +88,10 @@ export class CollectionService {
 
     // Check if user is owner or has editor permission
     if (collection.ownerId !== userId) {
-      const role = await this.permissionRepository.getUserRole(collectionId, userId);
+      const role = await this.permissionRepository.getUserRole(
+        collectionId,
+        userId
+      );
       if (role !== 'editor' && role !== 'owner') {
         throw new Error('Access denied');
       }
@@ -93,8 +105,11 @@ export class CollectionService {
       isPublic: data.isPublic,
       sortOrder: data.sortOrder,
     };
-    
-    const updated = await this.collectionRepository.update(collectionId, updateData);
+
+    const updated = await this.collectionRepository.update(
+      collectionId,
+      updateData
+    );
     if (!updated) {
       throw new Error('Failed to update collection');
     }
@@ -123,13 +138,17 @@ export class CollectionService {
 
     if (moveToDefault) {
       // Move bookmarks to null collection (uncategorized)
-      const bookmarks = await this.bookmarkRepository.findByCollection(collectionId);
+      const bookmarks =
+        await this.bookmarkRepository.findByCollection(collectionId);
       for (const bookmark of bookmarks) {
-        await this.bookmarkRepository.update(bookmark.id, { collectionId: undefined });
+        await this.bookmarkRepository.update(bookmark.id, {
+          collectionId: undefined,
+        });
       }
     } else {
       // Delete all bookmarks in the collection
-      const bookmarks = await this.bookmarkRepository.findByCollection(collectionId);
+      const bookmarks =
+        await this.bookmarkRepository.findByCollection(collectionId);
       for (const bookmark of bookmarks) {
         await this.bookmarkRepository.delete(bookmark.id);
       }
@@ -142,7 +161,10 @@ export class CollectionService {
   /**
    * Get collection hierarchy (parent chain)
    */
-  async getCollectionHierarchy(collectionId: string, userId: string): Promise<Collection[]> {
+  async getCollectionHierarchy(
+    collectionId: string,
+    userId: string
+  ): Promise<Collection[]> {
     const collection = await this.collectionRepository.findById(collectionId);
     if (!collection) {
       throw new Error('Collection not found');
@@ -158,7 +180,10 @@ export class CollectionService {
   /**
    * Get child collections
    */
-  async getChildCollections(collectionId: string, userId: string): Promise<Collection[]> {
+  async getChildCollections(
+    collectionId: string,
+    userId: string
+  ): Promise<Collection[]> {
     const collection = await this.collectionRepository.findById(collectionId);
     if (!collection) {
       throw new Error('Collection not found');
@@ -278,7 +303,9 @@ export class CollectionService {
     const collections: Collection[] = [];
 
     for (const permission of permissions) {
-      const collection = await this.collectionRepository.findById(permission.collectionId);
+      const collection = await this.collectionRepository.findById(
+        permission.collectionId
+      );
       if (collection) {
         collections.push(collection);
       }
@@ -345,8 +372,9 @@ export class CollectionService {
       return collection.shareSlug;
     }
 
-    const shareSlug = await this.collectionRepository.generateShareSlug(collectionId);
-    
+    const shareSlug =
+      await this.collectionRepository.generateShareSlug(collectionId);
+
     // Update isPublic flag
     await this.collectionRepository.update(collectionId, { isPublic: true });
 
@@ -375,8 +403,9 @@ export class CollectionService {
    * Get public collection by share slug (no auth required)
    */
   async getPublicCollection(shareSlug: string): Promise<Collection | null> {
-    const collection = await this.collectionRepository.findByShareSlug(shareSlug);
-    
+    const collection =
+      await this.collectionRepository.findByShareSlug(shareSlug);
+
     if (!collection || !collection.isPublic) {
       return null;
     }

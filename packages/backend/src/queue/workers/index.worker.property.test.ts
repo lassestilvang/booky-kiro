@@ -4,7 +4,7 @@ import * as cheerio from 'cheerio';
 
 /**
  * Property-Based Tests for Index Worker
- * 
+ *
  * Tests the following correctness properties:
  * - Property 23: Content Indexing Cleanliness
  * - Property 26: PDF Text Extraction
@@ -35,10 +35,10 @@ describe('Index Worker Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 23: Content Indexing Cleanliness
    * Validates: Requirements 8.2
-   * 
+   *
    * For any web page indexed for full-text search, the indexed content should not
    * contain common boilerplate patterns (ads, navigation, footers).
-   * 
+   *
    * Note: The index worker extracts text from HTML that has already been cleaned
    * by the snapshot worker. This test verifies that the text extraction preserves
    * the cleanliness and doesn't reintroduce boilerplate.
@@ -56,24 +56,24 @@ describe('Index Worker Property Tests', () => {
         async (data) => {
           // Build HTML with scripts and styles
           let html = '<html><head>';
-          
+
           if (data.hasStyle) {
             html += '<style>body { color: red; }</style>';
           }
-          
+
           html += '</head><body>';
-          
+
           if (data.hasScript) {
             html += '<script>console.log("test");</script>';
           }
-          
+
           // Main content
           html += `<article>${data.mainContent}</article>`;
-          
+
           if (data.hasInlineScript) {
             html += '<script>alert("popup");</script>';
           }
-          
+
           html += '</body></html>';
 
           // Extract and clean text
@@ -86,7 +86,7 @@ describe('Index Worker Property Tests', () => {
           expect(cleaned).not.toContain('color: red');
           expect(cleaned).not.toContain('<script>');
           expect(cleaned).not.toContain('<style>');
-          
+
           // Main content should be present
           if (data.mainContent.length > 10) {
             const firstWords = data.mainContent.substring(0, 10);
@@ -102,10 +102,10 @@ describe('Index Worker Property Tests', () => {
    * Feature: bookmark-manager-platform, Property 26: PDF Text Extraction
    * Feature: bookmark-manager-platform, Property 48: PDF Upload Text Extraction
    * Validates: Requirements 8.5, 15.2
-   * 
+   *
    * For any PDF file uploaded by a Pro user, the system should extract embedded text
    * and make it searchable through full-text search.
-   * 
+   *
    * Note: This test verifies the text extraction and cleaning logic.
    * Full PDF parsing is tested with actual PDF files in integration tests.
    */
@@ -152,11 +152,15 @@ describe('Index Worker Property Tests', () => {
           expect(cleaned).toBe(cleaned.trim());
 
           // 5. Original content is preserved (just cleaned)
-          const originalWords = data.text.split(/\s+/).filter(w => w.length > 0);
-          const cleanedWords = cleaned.split(/\s+/).filter(w => w.length > 0);
-          
+          const originalWords = data.text
+            .split(/\s+/)
+            .filter((w) => w.length > 0);
+          const cleanedWords = cleaned.split(/\s+/).filter((w) => w.length > 0);
+
           // Most words should be preserved (allowing for some variation in splitting)
-          expect(cleanedWords.length).toBeGreaterThanOrEqual(originalWords.length * 0.9);
+          expect(cleanedWords.length).toBeGreaterThanOrEqual(
+            originalWords.length * 0.9
+          );
         }
       ),
       { numRuns: 100 }
@@ -165,7 +169,7 @@ describe('Index Worker Property Tests', () => {
 
   /**
    * Additional property: Text extraction preserves content structure
-   * 
+   *
    * For any HTML content, extracting text should preserve the logical structure
    * and readability of the content.
    */
@@ -173,7 +177,10 @@ describe('Index Worker Property Tests', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          paragraphs: fc.array(fc.lorem({ maxCount: 20 }), { minLength: 2, maxLength: 5 }),
+          paragraphs: fc.array(fc.lorem({ maxCount: 20 }), {
+            minLength: 2,
+            maxLength: 5,
+          }),
         }),
         async (data) => {
           // Build HTML with paragraphs
@@ -181,7 +188,7 @@ describe('Index Worker Property Tests', () => {
             <html>
               <body>
                 <article>
-                  ${data.paragraphs.map(p => `<p>${p}</p>`).join('\n')}
+                  ${data.paragraphs.map((p) => `<p>${p}</p>`).join('\n')}
                 </article>
               </body>
             </html>
@@ -205,7 +212,7 @@ describe('Index Worker Property Tests', () => {
 
   /**
    * Additional property: Empty or whitespace-only content is handled gracefully
-   * 
+   *
    * For any content that is empty or contains only whitespace, the cleaning
    * function should return an empty string.
    */
@@ -217,7 +224,7 @@ describe('Index Worker Property Tests', () => {
           fc.constant('   '),
           fc.constant('\n\n\n'),
           fc.constant('\t\t\t'),
-          fc.constant('  \n  \t  \n  '),
+          fc.constant('  \n  \t  \n  ')
         ),
         async (whitespace) => {
           const cleaned = cleanText(whitespace);

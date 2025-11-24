@@ -57,7 +57,10 @@ export class ReminderService {
   /**
    * Get reminder by ID
    */
-  async getReminderById(reminderId: string, ownerId: string): Promise<Reminder | null> {
+  async getReminderById(
+    reminderId: string,
+    ownerId: string
+  ): Promise<Reminder | null> {
     const reminder = await this.reminderRepository.findById(reminderId);
     if (!reminder) {
       return null;
@@ -121,7 +124,10 @@ export class ReminderService {
       if (remindAt <= new Date()) {
         throw new Error('Reminder time must be in the future');
       }
-      const result = await this.reminderRepository.updateRemindAt(reminderId, remindAt);
+      const result = await this.reminderRepository.updateRemindAt(
+        reminderId,
+        remindAt
+      );
       if (result) updated = result;
     }
 
@@ -144,7 +150,10 @@ export class ReminderService {
   /**
    * Dismiss (mark as completed) a reminder
    */
-  async dismissReminder(reminderId: string, ownerId: string): Promise<Reminder> {
+  async dismissReminder(
+    reminderId: string,
+    ownerId: string
+  ): Promise<Reminder> {
     const reminder = await this.getReminderById(reminderId, ownerId);
     if (!reminder) {
       throw new Error('Reminder not found');

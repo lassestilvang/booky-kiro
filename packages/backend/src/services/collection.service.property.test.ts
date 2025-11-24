@@ -95,10 +95,11 @@ describe('Collection Service - Property-Based Tests', () => {
           expect(permission.role).toBe(role);
 
           // Verify permission exists in database
-          const dbPermission = await permissionRepository.findByCollectionAndUser(
-            collectionId,
-            targetUserId
-          );
+          const dbPermission =
+            await permissionRepository.findByCollectionAndUser(
+              collectionId,
+              targetUserId
+            );
           expect(dbPermission).not.toBeNull();
           expect(dbPermission?.role).toBe(role);
         }
@@ -124,7 +125,11 @@ describe('Collection Service - Property-Based Tests', () => {
         fc.string({ minLength: 1, maxLength: 100 }),
         async (ownerId, editorId, viewerId, originalTitle, newTitle) => {
           // Ensure all users are different
-          fc.pre(ownerId !== editorId && ownerId !== viewerId && editorId !== viewerId);
+          fc.pre(
+            ownerId !== editorId &&
+              ownerId !== viewerId &&
+              editorId !== viewerId
+          );
           fc.pre(originalTitle !== newTitle);
 
           // Create users
@@ -156,8 +161,18 @@ describe('Collection Service - Property-Based Tests', () => {
           const collectionId = collectionResult.rows[0].id;
 
           // Share with editor and viewer
-          await collectionService.shareCollection(collectionId, ownerId, editorId, 'editor');
-          await collectionService.shareCollection(collectionId, ownerId, viewerId, 'viewer');
+          await collectionService.shareCollection(
+            collectionId,
+            ownerId,
+            editorId,
+            'editor'
+          );
+          await collectionService.shareCollection(
+            collectionId,
+            ownerId,
+            viewerId,
+            'viewer'
+          );
 
           // Editor updates the collection
           await collectionService.updateCollection(collectionId, editorId, {
@@ -165,15 +180,24 @@ describe('Collection Service - Property-Based Tests', () => {
           });
 
           // Verify owner sees the change
-          const ownerView = await collectionService.getCollectionById(collectionId, ownerId);
+          const ownerView = await collectionService.getCollectionById(
+            collectionId,
+            ownerId
+          );
           expect(ownerView?.title).toBe(newTitle);
 
           // Verify viewer sees the change
-          const viewerView = await collectionService.getCollectionById(collectionId, viewerId);
+          const viewerView = await collectionService.getCollectionById(
+            collectionId,
+            viewerId
+          );
           expect(viewerView?.title).toBe(newTitle);
 
           // Verify editor sees the change
-          const editorView = await collectionService.getCollectionById(collectionId, editorId);
+          const editorView = await collectionService.getCollectionById(
+            collectionId,
+            editorId
+          );
           expect(editorView?.title).toBe(newTitle);
 
           // All users should see the same updated title
@@ -196,7 +220,10 @@ describe('Collection Service - Property-Based Tests', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.uuid(),
-        fc.array(fc.string({ minLength: 1, maxLength: 100 }), { minLength: 2, maxLength: 10 }),
+        fc.array(fc.string({ minLength: 1, maxLength: 100 }), {
+          minLength: 2,
+          maxLength: 10,
+        }),
         async (ownerId, collectionTitles) => {
           // Create owner user
           await testPool.query(
@@ -218,11 +245,15 @@ describe('Collection Service - Property-Based Tests', () => {
             const collectionId = collectionResult.rows[0].id;
 
             // Make collection public and get share slug
-            const shareSlug = await collectionService.makePublic(collectionId, ownerId);
+            const shareSlug = await collectionService.makePublic(
+              collectionId,
+              ownerId
+            );
             shareSlugs.push(shareSlug);
 
             // Verify the collection can be retrieved by share slug
-            const publicCollection = await collectionService.getPublicCollection(shareSlug);
+            const publicCollection =
+              await collectionService.getPublicCollection(shareSlug);
             expect(publicCollection).not.toBeNull();
             expect(publicCollection?.id).toBe(collectionId);
             expect(publicCollection?.isPublic).toBe(true);

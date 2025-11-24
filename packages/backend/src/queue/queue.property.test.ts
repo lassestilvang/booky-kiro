@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import * as fc from 'fast-check';
 import {
   snapshotQueue,
@@ -32,8 +32,6 @@ describe('Job Queue Property Tests', () => {
     ]);
   });
 
-
-
   afterAll(async () => {
     // Resume workers before closing
     await Promise.all([
@@ -57,7 +55,7 @@ describe('Job Queue Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 59: Job Enqueueing
    * Validates: Requirements 18.1
-   * 
+   *
    * For any bookmark created, the system should enqueue a background job
    * for content fetching, snapshot creation, and indexing.
    */
@@ -77,11 +75,6 @@ describe('Job Queue Property Tests', () => {
             bookmarkId: `test-bookmark-${Date.now()}-${testCounter++}`,
           };
 
-          // Get initial queue counts
-          const initialWaiting = await snapshotQueue.getWaitingCount();
-          const initialActive = await snapshotQueue.getActiveCount();
-          const initialTotal = initialWaiting + initialActive;
-
           // Enqueue the job
           const job = await enqueueSnapshotJob(snapshotData);
 
@@ -96,7 +89,9 @@ describe('Job Queue Property Tests', () => {
 
           // Verify the job is in the queue (in any valid state)
           const jobState = await retrievedJob!.getState();
-          expect(['waiting', 'delayed', 'active', 'prioritized']).toContain(jobState);
+          expect(['waiting', 'delayed', 'active', 'prioritized']).toContain(
+            jobState
+          );
 
           // Clean up
           await job.remove();
@@ -109,7 +104,7 @@ describe('Job Queue Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 61: Job Retry with Backoff
    * Validates: Requirements 18.3
-   * 
+   *
    * For any failed snapshot job, the background worker should retry with
    * exponential backoff up to a maximum retry count.
    */
@@ -144,7 +139,7 @@ describe('Job Queue Property Tests', () => {
 
           // Verify the job has the correct initial state
           expect(job.attemptsMade).toBe(0);
-          
+
           // Verify job removal configuration
           expect(job.opts.removeOnComplete).toBeDefined();
           expect(job.opts.removeOnFail).toBeDefined();
@@ -160,7 +155,7 @@ describe('Job Queue Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 62: Job Priority Processing
    * Validates: Requirements 18.4
-   * 
+   *
    * For any job queue with multiple jobs, the background worker should
    * process jobs in priority order with rate limiting.
    */
@@ -207,10 +202,10 @@ describe('Job Queue Property Tests', () => {
           for (let i = 0; i < jobs.length; i++) {
             const job = jobs[i];
             const expectedPriority = jobsWithIds[i].priority;
-            
+
             expect(job).toBeDefined();
             expect(job.opts.priority).toBe(expectedPriority);
-            
+
             // Verify job exists in queue
             const retrievedJob = await snapshotQueue.getJob(job.id!);
             expect(retrievedJob).toBeDefined();
@@ -241,7 +236,9 @@ describe('Job Queue Property Tests', () => {
           }),
           index: fc.record({
             bookmarkId: fc.uuid(),
-            snapshotPath: fc.string({ minLength: 10, maxLength: 100 }).filter(s => s.trim().length > 0),
+            snapshotPath: fc
+              .string({ minLength: 10, maxLength: 100 })
+              .filter((s) => s.trim().length > 0),
             type: fc.constantFrom(
               'article' as const,
               'video' as const,
@@ -262,7 +259,9 @@ describe('Job Queue Property Tests', () => {
           // Enqueue jobs in all three queues
           const snapshotJob = await enqueueSnapshotJob(jobData.snapshot);
           const indexJob = await enqueueIndexJob(jobData.index);
-          const maintenanceJob = await enqueueMaintenanceJob(jobData.maintenance);
+          const maintenanceJob = await enqueueMaintenanceJob(
+            jobData.maintenance
+          );
 
           // Verify all jobs were created
           expect(snapshotJob.id).toBeDefined();
@@ -282,18 +281,30 @@ describe('Job Queue Property Tests', () => {
 
           // Verify job data - check essential fields
           // BullMQ may serialize/deserialize data through Redis which can affect comparison
-          expect(snapshotRetrieved!.data.bookmarkId).toBe(jobData.snapshot.bookmarkId);
+          expect(snapshotRetrieved!.data.bookmarkId).toBe(
+            jobData.snapshot.bookmarkId
+          );
           expect(snapshotRetrieved!.data.url).toBe(jobData.snapshot.url);
           expect(snapshotRetrieved!.data.userId).toBe(jobData.snapshot.userId);
-          expect(snapshotRetrieved!.data.userPlan).toBe(jobData.snapshot.userPlan);
-          
-          expect(indexRetrieved!.data.bookmarkId).toBe(jobData.index.bookmarkId);
-          expect(indexRetrieved!.data.snapshotPath).toBe(jobData.index.snapshotPath);
+          expect(snapshotRetrieved!.data.userPlan).toBe(
+            jobData.snapshot.userPlan
+          );
+
+          expect(indexRetrieved!.data.bookmarkId).toBe(
+            jobData.index.bookmarkId
+          );
+          expect(indexRetrieved!.data.snapshotPath).toBe(
+            jobData.index.snapshotPath
+          );
           expect(indexRetrieved!.data.type).toBe(jobData.index.type);
-          
-          expect(maintenanceRetrieved!.data.type).toBe(jobData.maintenance.type);
+
+          expect(maintenanceRetrieved!.data.type).toBe(
+            jobData.maintenance.type
+          );
           if (jobData.maintenance.userId !== undefined) {
-            expect(maintenanceRetrieved!.data.userId).toBe(jobData.maintenance.userId);
+            expect(maintenanceRetrieved!.data.userId).toBe(
+              jobData.maintenance.userId
+            );
           }
 
           // Clean up - wait for jobs to complete or fail before removing

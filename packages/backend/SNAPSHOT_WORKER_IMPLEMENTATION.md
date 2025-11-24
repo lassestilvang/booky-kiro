@@ -34,11 +34,13 @@ The snapshot worker (`packages/backend/src/queue/workers/snapshot.worker.ts`) im
 ### Configuration
 
 Environment variables added to `.env` and `.env.example`:
+
 - `MINIO_SNAPSHOT_BUCKET`: Bucket name for storing snapshots (default: "snapshots")
 
 ### Storage Structure
 
 Snapshots are organized in MinIO as follows:
+
 ```
 snapshots/
 ├── {userId}/
@@ -52,6 +54,7 @@ snapshots/
 Six correctness properties have been validated through property-based testing:
 
 ### Property 15: Content Extraction Quality
+
 **Validates**: Requirements 5.4
 
 For any web page content, extracting main content produces text without common boilerplate patterns (navigation menus, advertisements, footers).
@@ -59,6 +62,7 @@ For any web page content, extracting main content produces text without common b
 **Test Result**: ✅ PASSED (100 runs)
 
 ### Property 27: Snapshot Creation
+
 **Validates**: Requirements 9.1
 
 For any HTML content, the snapshot creation process preserves the content structure and makes it retrievable.
@@ -66,6 +70,7 @@ For any HTML content, the snapshot creation process preserves the content struct
 **Test Result**: ✅ PASSED (100 runs)
 
 ### Property 29: Thumbnail Generation
+
 **Validates**: Requirements 9.3
 
 For any snapshot created, a thumbnail is generated as a valid image buffer.
@@ -73,6 +78,7 @@ For any snapshot created, a thumbnail is generated as a valid image buffer.
 **Test Result**: ✅ PASSED (100 runs)
 
 ### Property 30: Snapshot Storage Format
+
 **Validates**: Requirements 9.4
 
 For any snapshot created, the stored snapshot contains the complete HTML structure with all elements preserved.
@@ -80,6 +86,7 @@ For any snapshot created, the stored snapshot contains the complete HTML structu
 **Test Result**: ✅ PASSED (50 runs)
 
 ### Property 60: Snapshot Workflow Completion
+
 **Validates**: Requirements 18.2
 
 For any snapshot job processed, the background worker fetches HTML, extracts content, stores the snapshot, and prepares for indexing.
@@ -87,6 +94,7 @@ For any snapshot job processed, the background worker fetches HTML, extracts con
 **Test Result**: ✅ PASSED (50 runs)
 
 ### Property 63: Snapshot Completion Status Update
+
 **Validates**: Requirements 18.5
 
 For any completed snapshot, the bookmark record is updated with the snapshot path.
@@ -96,15 +104,18 @@ For any completed snapshot, the bookmark record is updated with the snapshot pat
 ## Integration Points
 
 ### Queue System
+
 - Consumes jobs from the `snapshot-processing` queue
 - Enqueues jobs to the `content-indexing` queue after completion
 - Configured with 3 retry attempts and exponential backoff
 
 ### Database
+
 - Updates `bookmarks` table with `content_snapshot_path` and `cover_url`
 - Uses `BookmarkRepository` for database operations
 
 ### Object Storage
+
 - Stores HTML and thumbnails in MinIO
 - Automatically creates buckets if they don't exist
 - Uses proper content-type headers for stored objects
@@ -120,6 +131,7 @@ The snapshot worker is automatically started when the backend application runs. 
 ## Next Steps
 
 The snapshot worker is now ready for integration with:
+
 1. **Index Worker** (Task 14): Will consume the enqueued indexing jobs to extract text and index in search engine
 2. **Bookmark Creation Flow**: Automatically enqueues snapshot jobs when Pro users create bookmarks
 3. **Maintenance Worker** (Task 15): Will handle snapshot cleanup and retention policies
@@ -127,6 +139,7 @@ The snapshot worker is now ready for integration with:
 ## Testing
 
 Run the property-based tests:
+
 ```bash
 cd packages/backend
 pnpm test:run snapshot.worker.property.test.ts

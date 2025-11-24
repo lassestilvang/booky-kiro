@@ -25,11 +25,15 @@ describe('FileService Property-Based Tests', () => {
     bookmarkRepository = new BookmarkRepository(pool);
     userRepository = new UserRepository(pool);
     storageClient = new StorageClient();
-    
+
     // Initialize storage
     await storageClient.initialize();
 
-    fileService = new FileService(fileRepository, bookmarkRepository, storageClient);
+    fileService = new FileService(
+      fileRepository,
+      bookmarkRepository,
+      storageClient
+    );
 
     // Create a test user with Pro plan
     const testUser = await userRepository.createWithPassword(
@@ -40,7 +44,10 @@ describe('FileService Property-Based Tests', () => {
     testUserId = testUser.id;
 
     // Update user to Pro plan
-    await pool.query('UPDATE users SET plan = $1 WHERE id = $2', ['pro', testUserId]);
+    await pool.query('UPDATE users SET plan = $1 WHERE id = $2', [
+      'pro',
+      testUserId,
+    ]);
 
     // Create a test bookmark
     const bookmark = await bookmarkRepository.create({
@@ -69,7 +76,10 @@ describe('FileService Property-Based Tests', () => {
 
   beforeEach(async () => {
     // Clean up files before each test
-    const files = await pool.query('SELECT id, s3_path FROM files WHERE owner_id = $1', [testUserId]);
+    const files = await pool.query(
+      'SELECT id, s3_path FROM files WHERE owner_id = $1',
+      [testUserId]
+    );
     for (const file of files.rows) {
       try {
         await storageClient.deleteFile(file.s3_path);
@@ -82,18 +92,26 @@ describe('FileService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 47: File Upload Storage
-   * 
+   *
    * For any file uploaded by a Pro user, the system should store the file in object storage
    * and create a bookmark with complete file metadata (filename, MIME type, size, storage path).
-   * 
+   *
    * Validates: Requirements 15.1
    */
   it('Property 47: File Upload Storage - all metadata is persisted correctly', async () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate random file data
-        fc.string({ minLength: 1, maxLength: 100 }).map(s => `${s.replace(/[^a-zA-Z0-9]/g, '_')}.txt`), // filename
-        fc.constantFrom('text/plain', 'application/pdf', 'image/jpeg', 'image/png', 'video/mp4'), // mimeType
+        fc
+          .string({ minLength: 1, maxLength: 100 })
+          .map((s) => `${s.replace(/[^a-zA-Z0-9]/g, '_')}.txt`), // filename
+        fc.constantFrom(
+          'text/plain',
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'video/mp4'
+        ), // mimeType
         fc.uint8Array({ minLength: 100, maxLength: 1000 }), // file data
         async (filename, mimeType, dataArray) => {
           // Ensure test data is set
@@ -140,18 +158,25 @@ describe('FileService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 49: File Serving
-   * 
+   *
    * For any uploaded file bookmark, viewing the file should serve it from object storage
    * with appropriate content type headers.
-   * 
+   *
    * Validates: Requirements 15.3
    */
   it('Property 49: File Serving - files can be retrieved with correct metadata', async () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate random file data
-        fc.string({ minLength: 1, maxLength: 100 }).map(s => `${s.replace(/[^a-zA-Z0-9]/g, '_')}.txt`), // filename
-        fc.constantFrom('text/plain', 'application/pdf', 'image/jpeg', 'image/png'), // mimeType
+        fc
+          .string({ minLength: 1, maxLength: 100 })
+          .map((s) => `${s.replace(/[^a-zA-Z0-9]/g, '_')}.txt`), // filename
+        fc.constantFrom(
+          'text/plain',
+          'application/pdf',
+          'image/jpeg',
+          'image/png'
+        ), // mimeType
         fc.uint8Array({ minLength: 100, maxLength: 1000 }), // file data
         async (filename, mimeType, dataArray) => {
           // Ensure test data is set
@@ -172,7 +197,10 @@ describe('FileService Property-Based Tests', () => {
           );
 
           // Retrieve file metadata
-          const retrievedFile = await fileService.getFile(uploadedFile.id, testUserId);
+          const retrievedFile = await fileService.getFile(
+            uploadedFile.id,
+            testUserId
+          );
 
           // Verify metadata matches
           expect(retrievedFile.id).toBe(uploadedFile.id);
@@ -181,7 +209,10 @@ describe('FileService Property-Based Tests', () => {
           expect(retrievedFile.sizeBytes).toBe(data.length);
 
           // Get file stream
-          const { stream, file } = await fileService.getFileStream(uploadedFile.id, testUserId);
+          const { stream, file } = await fileService.getFileStream(
+            uploadedFile.id,
+            testUserId
+          );
 
           // Verify file metadata from stream
           expect(file.mimeType).toBe(mimeType);
@@ -215,9 +246,15 @@ describe('FileService Property-Based Tests', () => {
 
     try {
       const data = Buffer.from('test data');
-      
+
       await expect(
-        fileService.uploadFile(freeUser.id, 'free', 'test.txt', 'text/plain', data)
+        fileService.uploadFile(
+          freeUser.id,
+          'free',
+          'test.txt',
+          'text/plain',
+          data
+        )
       ).rejects.toThrow('File uploads are a Pro feature');
     } finally {
       // Clean up
@@ -237,18 +274,24 @@ describe('FileService Property-Based Tests', () => {
     const largeData = Buffer.alloc(101 * 1024 * 1024); // 101MB
 
     await expect(
-      fileService.uploadFile(testUserId, 'pro', 'large.bin', 'application/octet-stream', largeData)
+      fileService.uploadFile(
+        testUserId,
+        'pro',
+        'large.bin',
+        'application/octet-stream',
+        largeData
+      )
     ).rejects.toThrow('File size exceeds limit');
   });
 
   /**
    * Feature: bookmark-manager-platform, Property 48: PDF Upload Text Extraction
-   * 
+   *
    * For any PDF uploaded by a Pro user, the background worker should extract text content
    * and index it for full-text search.
-   * 
+   *
    * Validates: Requirements 15.2
-   * 
+   *
    * Note: This test verifies that PDF uploads trigger indexing jobs.
    * The actual text extraction is tested in the index worker tests.
    */
@@ -261,12 +304,12 @@ describe('FileService Property-Based Tests', () => {
     // This is a minimal PDF that pdf-parse can read
     const pdfData = Buffer.from(
       '%PDF-1.4\n' +
-      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n' +
-      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n' +
-      '3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n' +
-      '4 0 obj\n<< /Length 44 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Test PDF Content) Tj\nET\nendstream\nendobj\n' +
-      'xref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000317 00000 n\n' +
-      'trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n408\n%%EOF'
+        '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n' +
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n' +
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n' +
+        '4 0 obj\n<< /Length 44 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Test PDF Content) Tj\nET\nendstream\nendobj\n' +
+        'xref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000317 00000 n\n' +
+        'trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n408\n%%EOF'
     );
 
     // Upload PDF file
@@ -298,7 +341,7 @@ describe('FileService Property-Based Tests', () => {
     }
 
     const data = Buffer.from('test data for deletion');
-    
+
     // Upload file
     const file = await fileService.uploadFile(
       testUserId,
@@ -320,8 +363,8 @@ describe('FileService Property-Based Tests', () => {
     expect(existsAfter).toBe(false);
 
     // Verify file record is deleted from database
-    await expect(
-      fileService.getFile(file.id, testUserId)
-    ).rejects.toThrow('File not found');
+    await expect(fileService.getFile(file.id, testUserId)).rejects.toThrow(
+      'File not found'
+    );
   });
 });

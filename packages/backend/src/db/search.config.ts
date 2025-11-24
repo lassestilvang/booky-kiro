@@ -1,7 +1,8 @@
 import { MeiliSearch } from 'meilisearch';
 
 // MeiliSearch client configuration
-const MEILISEARCH_HOST = process.env.MEILISEARCH_HOST || 'http://localhost:7700';
+const MEILISEARCH_HOST =
+  process.env.MEILISEARCH_HOST || 'http://localhost:7700';
 const MEILISEARCH_API_KEY = process.env.MEILISEARCH_API_KEY || 'masterKey123';
 
 // Create MeiliSearch client instance
@@ -44,11 +45,7 @@ export async function initializeSearchIndex(): Promise<void> {
     ]);
 
     // Configure sortable attributes
-    await index.updateSortableAttributes([
-      'created_at',
-      'updated_at',
-      'title',
-    ]);
+    await index.updateSortableAttributes(['created_at', 'updated_at', 'title']);
 
     // Configure ranking rules for relevance
     await index.updateRankingRules([

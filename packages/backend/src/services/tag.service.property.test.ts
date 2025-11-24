@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import * as fc from 'fast-check';
 import pool from '../db/config.js';
 import { runMigrations } from '../db/migrate.js';
@@ -81,7 +81,9 @@ describe('Tag Service Property Tests', () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate a base tag name
-        fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
+        fc
+          .string({ minLength: 1, maxLength: 50 })
+          .filter((s) => s.trim().length > 0),
         // Generate different case variations
         fc.constantFrom('lower', 'upper', 'mixed'),
         async (baseName, caseVariation) => {
@@ -96,12 +98,16 @@ describe('Tag Service Property Tests', () => {
             case 'lower':
               tagName1 = trimmedBase.toLowerCase();
               tagName2 = trimmedBase.toUpperCase();
-              tagName3 = trimmedBase.charAt(0).toUpperCase() + trimmedBase.slice(1).toLowerCase();
+              tagName3 =
+                trimmedBase.charAt(0).toUpperCase() +
+                trimmedBase.slice(1).toLowerCase();
               break;
             case 'upper':
               tagName1 = trimmedBase.toUpperCase();
               tagName2 = trimmedBase.toLowerCase();
-              tagName3 = trimmedBase.charAt(0).toLowerCase() + trimmedBase.slice(1).toUpperCase();
+              tagName3 =
+                trimmedBase.charAt(0).toLowerCase() +
+                trimmedBase.slice(1).toUpperCase();
               break;
             default:
               tagName1 = trimmedBase;
@@ -110,11 +116,19 @@ describe('Tag Service Property Tests', () => {
           }
 
           // Create tags with different case variations
-          const tag1 = await tagService.createTag(testUserId, { name: tagName1 });
-          
+          const tag1 = await tagService.createTag(testUserId, {
+            name: tagName1,
+          });
+
           // Try to create the same tag with different case - should return existing tag
-          const tag2Result = await tagRepository.findByNormalizedName(testUserId, tagName2);
-          const tag3Result = await tagRepository.findByNormalizedName(testUserId, tagName3);
+          const tag2Result = await tagRepository.findByNormalizedName(
+            testUserId,
+            tagName2
+          );
+          const tag3Result = await tagRepository.findByNormalizedName(
+            testUserId,
+            tagName3
+          );
 
           // All variations should resolve to the same tag entity
           expect(tag2Result).not.toBeNull();
@@ -155,7 +169,7 @@ describe('Tag Service Property Tests', () => {
           if (!testUserId) {
             throw new Error('testUserId is not set');
           }
-          
+
           // Create source tags
           const sourceTags = [];
           for (let i = 0; i < numSourceTags; i++) {
@@ -210,7 +224,8 @@ describe('Tag Service Property Tests', () => {
 
           // Verify all bookmarks now have the target tag
           for (const bookmarkId of uniqueBookmarkIds) {
-            const bookmarkTags = await bookmarkRepository.getBookmarkTags(bookmarkId);
+            const bookmarkTags =
+              await bookmarkRepository.getBookmarkTags(bookmarkId);
             const tagIds = bookmarkTags.map((t) => t.id);
 
             // Should have the target tag

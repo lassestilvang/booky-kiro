@@ -11,7 +11,8 @@ Implemented the maintenance worker for background processing of duplicate detect
 Main maintenance worker implementation with two job types:
 
 **Duplicate Detection:**
-- Normalizes URLs by removing tracking parameters (utm_*, fbclid, gclid, etc.)
+
+- Normalizes URLs by removing tracking parameters (utm\_\*, fbclid, gclid, etc.)
 - Removes URL fragments (hash)
 - Converts URLs to lowercase for consistent comparison
 - Computes content hashes for duplicate detection
@@ -20,6 +21,7 @@ Main maintenance worker implementation with two job types:
   - Content hashes match (for different URLs with same content)
 
 **Broken Link Scanner:**
+
 - Requests each saved URL with 10-second timeout
 - Marks bookmarks as broken on 4xx/5xx status codes
 - Marks bookmarks as broken on network errors or timeouts
@@ -31,26 +33,31 @@ Main maintenance worker implementation with two job types:
 Comprehensive property-based tests covering:
 
 **Property 64: URL Normalization**
+
 - Removes tracking parameters from URLs
 - Removes URL fragments (hash)
 - Normalizes URLs to lowercase
 - Preserves non-tracking query parameters
 
 **Property 65: Duplicate Flagging**
+
 - Identifies URLs with same normalized form as duplicates
 - Identifies different URLs as non-duplicates
 
 **Property 66: Content Hash Duplicate Detection**
+
 - Computes consistent hashes for same content
 - Handles whitespace and case variations
 - Identifies content with same hash as duplicates
 
 **Property 67: Broken Link Detection**
+
 - Identifies 4xx status codes as broken links
 - Identifies 5xx status codes as broken links
 - Identifies 2xx/3xx status codes as working links
 
 **Property 68: Broken Link Filtering**
+
 - Filters bookmarks by broken status correctly
 - Returns empty array when no broken bookmarks exist
 
@@ -65,6 +72,7 @@ Comprehensive property-based tests covering:
 ## Testing
 
 All property-based tests pass with 100+ iterations per property, validating:
+
 - URL normalization correctness
 - Duplicate detection accuracy
 - Broken link detection reliability
@@ -73,6 +81,7 @@ All property-based tests pass with 100+ iterations per property, validating:
 ## Integration
 
 The maintenance worker integrates with:
+
 - BullMQ job queue for async processing
 - PostgreSQL for bookmark storage
 - BookmarkRepository for data access

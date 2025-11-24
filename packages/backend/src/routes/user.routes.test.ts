@@ -44,9 +44,11 @@ describe('User Routes', () => {
       } as unknown as Response;
 
       // Get the route handler
-      const routes = router.stack.filter((layer: any) => layer.route?.path === '/');
+      const routes = router.stack.filter(
+        (layer: any) => layer.route?.path === '/'
+      );
       const getRoute = routes.find((layer: any) => layer.route.methods.get);
-      
+
       if (getRoute) {
         await getRoute.route.stack[0].handle(req, res);
       }
@@ -75,9 +77,11 @@ describe('User Routes', () => {
         json: vi.fn(),
       } as unknown as Response;
 
-      const routes = router.stack.filter((layer: any) => layer.route?.path === '/');
+      const routes = router.stack.filter(
+        (layer: any) => layer.route?.path === '/'
+      );
       const getRoute = routes.find((layer: any) => layer.route.methods.get);
-      
+
       if (getRoute) {
         await getRoute.route.stack[0].handle(req, res);
       }
@@ -115,9 +119,11 @@ describe('User Routes', () => {
         json: vi.fn(),
       } as unknown as Response;
 
-      const routes = router.stack.filter((layer: any) => layer.route?.path === '/stats');
+      const routes = router.stack.filter(
+        (layer: any) => layer.route?.path === '/stats'
+      );
       const getRoute = routes.find((layer: any) => layer.route.methods.get);
-      
+
       if (getRoute) {
         await getRoute.route.stack[0].handle(req, res);
       }
@@ -139,7 +145,9 @@ describe('User Routes', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockUserService.updateUserProfile).mockResolvedValue(updatedUser);
+      vi.mocked(mockUserService.updateUserProfile).mockResolvedValue(
+        updatedUser
+      );
 
       const req = {
         user: { userId: 'user-123', email: 'test@example.com', plan: 'free' },
@@ -152,17 +160,22 @@ describe('User Routes', () => {
         json: vi.fn(),
       } as unknown as Response;
 
-      const routes = router.stack.filter((layer: any) => layer.route?.path === '/');
+      const routes = router.stack.filter(
+        (layer: any) => layer.route?.path === '/'
+      );
       const putRoute = routes.find((layer: any) => layer.route.methods.put);
-      
+
       if (putRoute) {
         await putRoute.route.stack[0].handle(req, res);
       }
 
-      expect(mockUserService.updateUserProfile).toHaveBeenCalledWith('user-123', {
-        name: 'Updated Name',
-        email: 'newemail@example.com',
-      });
+      expect(mockUserService.updateUserProfile).toHaveBeenCalledWith(
+        'user-123',
+        {
+          name: 'Updated Name',
+          email: 'newemail@example.com',
+        }
+      );
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });
@@ -181,14 +194,20 @@ describe('User Routes', () => {
         send: vi.fn(),
       } as unknown as Response;
 
-      const routes = router.stack.filter((layer: any) => layer.route?.path === '/');
-      const deleteRoute = routes.find((layer: any) => layer.route.methods.delete);
-      
+      const routes = router.stack.filter(
+        (layer: any) => layer.route?.path === '/'
+      );
+      const deleteRoute = routes.find(
+        (layer: any) => layer.route.methods.delete
+      );
+
       if (deleteRoute) {
         await deleteRoute.route.stack[0].handle(req, res);
       }
 
-      expect(mockUserService.deleteUserAccount).toHaveBeenCalledWith('user-123');
+      expect(mockUserService.deleteUserAccount).toHaveBeenCalledWith(
+        'user-123'
+      );
       expect(res.status).toHaveBeenCalledWith(204);
       expect(res.send).toHaveBeenCalled();
     });

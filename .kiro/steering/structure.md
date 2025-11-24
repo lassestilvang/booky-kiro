@@ -19,12 +19,14 @@ bookmark-manager-platform/
 ## Package Structure
 
 ### packages/backend
+
 - `src/` - TypeScript source files
 - `dist/` - Compiled JavaScript output
 - `.env.example` - Environment variable template
 - Entry point: `src/index.ts`
 
 ### packages/frontend
+
 - `src/` - React components and application code
 - `dist/` - Vite build output
 - `index.html` - HTML entry point
@@ -32,6 +34,7 @@ bookmark-manager-platform/
 - `tailwind.config.js` - Tailwind CSS configuration
 
 ### packages/extension
+
 - `src/` - Extension source files
   - `background.ts` - Service worker
   - `content.ts` - Content script
@@ -39,6 +42,7 @@ bookmark-manager-platform/
 - `manifest.json` - Extension manifest (V3)
 
 ### packages/shared
+
 - `src/` - Shared TypeScript types and utilities
 - `src/types/` - Type definitions
 - `dist/` - Compiled output

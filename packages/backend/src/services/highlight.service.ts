@@ -6,7 +6,7 @@ import {
 } from '@bookmark-manager/shared';
 import { HighlightRepository } from '../repositories/highlight.repository.js';
 import { BookmarkRepository } from '../repositories/bookmark.repository.js';
-import { SearchService, BookmarkSearchDocument } from './search.service.js';
+import { SearchService } from './search.service.js';
 
 /**
  * Highlight service for managing highlights (Pro feature)
@@ -26,11 +26,8 @@ export class HighlightService {
     page: number = 1,
     limit: number = 50
   ): Promise<PaginatedResponse<Highlight>> {
-    const { highlights, total } = await this.highlightRepository.findByOwnerPaginated(
-      userId,
-      page,
-      limit
-    );
+    const { highlights, total } =
+      await this.highlightRepository.findByOwnerPaginated(userId, page, limit);
 
     const totalPages = Math.ceil(total / limit);
 
@@ -46,7 +43,10 @@ export class HighlightService {
   /**
    * Get a single highlight by ID
    */
-  async getHighlightById(highlightId: string, userId: string): Promise<Highlight | null> {
+  async getHighlightById(
+    highlightId: string,
+    userId: string
+  ): Promise<Highlight | null> {
     const highlight = await this.highlightRepository.findById(highlightId);
 
     if (!highlight) {
@@ -124,7 +124,10 @@ export class HighlightService {
       updateData.annotationMd = data.annotationMd;
     }
 
-    const updated = await this.highlightRepository.update(highlightId, updateData);
+    const updated = await this.highlightRepository.update(
+      highlightId,
+      updateData
+    );
     if (!updated) {
       throw new Error('Failed to update highlight');
     }
@@ -186,16 +189,18 @@ export class HighlightService {
   private async reindexBookmark(bookmarkId: string): Promise<void> {
     try {
       // Get bookmark with all highlights
-      const bookmark = await this.bookmarkRepository.findByIdWithRelations(bookmarkId);
+      const bookmark =
+        await this.bookmarkRepository.findByIdWithRelations(bookmarkId);
       if (!bookmark) {
         return;
       }
 
       // Update highlights_text in search index
-      const highlightsText = bookmark.highlights
-        .map((h) => `${h.textSelected} ${h.annotationMd || ''}`)
-        .join(' ')
-        .trim() || null;
+      const highlightsText =
+        bookmark.highlights
+          .map((h) => `${h.textSelected} ${h.annotationMd || ''}`)
+          .join(' ')
+          .trim() || null;
 
       await this.searchService.updateBookmark({
         id: bookmarkId,
@@ -203,7 +208,10 @@ export class HighlightService {
       });
     } catch (error) {
       // Log error but don't fail the operation
-      console.error('Failed to re-index bookmark after highlight change:', error);
+      console.error(
+        'Failed to re-index bookmark after highlight change:',
+        error
+      );
     }
   }
 }

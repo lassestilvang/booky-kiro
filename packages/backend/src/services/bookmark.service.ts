@@ -6,8 +6,12 @@ import {
   PaginationParams,
   PaginatedResponse,
 } from '@bookmark-manager/shared';
-import { BookmarkRepository, BookmarkFilters } from '../repositories/bookmark.repository.js';
+import {
+  BookmarkRepository,
+  BookmarkFilters,
+} from '../repositories/bookmark.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
+import { StorageClient } from '../utils/storage.js';
 
 /**
  * Bookmark service for managing bookmarks
@@ -15,7 +19,8 @@ import { TagRepository } from '../repositories/tag.repository.js';
 export class BookmarkService {
   constructor(
     private bookmarkRepository: BookmarkRepository,
-    private tagRepository: TagRepository
+    private tagRepository: TagRepository,
+    private storageClient?: StorageClient
   ) {}
 
   /**
@@ -56,7 +61,8 @@ export class BookmarkService {
     bookmarkId: string,
     userId: string
   ): Promise<BookmarkWithRelations | null> {
-    const bookmark = await this.bookmarkRepository.findByIdWithRelations(bookmarkId);
+    const bookmark =
+      await this.bookmarkRepository.findByIdWithRelations(bookmarkId);
 
     if (!bookmark) {
       return null;
@@ -81,7 +87,10 @@ export class BookmarkService {
     const domain = this.extractDomain(data.url);
 
     // Check for duplicates
-    const duplicates = await this.bookmarkRepository.findDuplicatesByUrl(userId, data.url);
+    const duplicates = await this.bookmarkRepository.findDuplicatesByUrl(
+      userId,
+      data.url
+    );
     const isDuplicate = duplicates.length > 0;
 
     // Create bookmark
@@ -142,7 +151,10 @@ export class BookmarkService {
       coverUrl: data.coverUrl,
       customOrder: data.customOrder,
     };
-    const updated = await this.bookmarkRepository.update(bookmarkId, updateData);
+    const updated = await this.bookmarkRepository.update(
+      bookmarkId,
+      updateData
+    );
     if (!updated) {
       throw new Error('Failed to update bookmark');
     }
@@ -150,7 +162,8 @@ export class BookmarkService {
     // Handle tags if provided
     if (data.tags !== undefined) {
       // Get current tags
-      const currentTags = await this.bookmarkRepository.getBookmarkTags(bookmarkId);
+      const currentTags =
+        await this.bookmarkRepository.getBookmarkTags(bookmarkId);
       const currentTagIds = currentTags.map((tag) => tag.id);
 
       // Create or get new tags
@@ -158,7 +171,9 @@ export class BookmarkService {
       const newTagIds = newTags.map((tag) => tag.id);
 
       // Remove old tags
-      const tagsToRemove = currentTagIds.filter((id) => !newTagIds.includes(id));
+      const tagsToRemove = currentTagIds.filter(
+        (id) => !newTagIds.includes(id)
+      );
       if (tagsToRemove.length > 0) {
         await this.bookmarkRepository.removeTags(bookmarkId, tagsToRemove);
       }
@@ -171,7 +186,8 @@ export class BookmarkService {
     }
 
     // Return updated bookmark with relations
-    const result = await this.bookmarkRepository.findByIdWithRelations(bookmarkId);
+    const result =
+      await this.bookmarkRepository.findByIdWithRelations(bookmarkId);
     if (!result) {
       throw new Error('Failed to retrieve updated bookmark');
     }
@@ -215,7 +231,10 @@ export class BookmarkService {
       throw new Error('Access denied');
     }
 
-    const updated = await this.bookmarkRepository.moveToCollection(bookmarkId, collectionId);
+    const updated = await this.bookmarkRepository.moveToCollection(
+      bookmarkId,
+      collectionId
+    );
     if (!updated) {
       throw new Error('Failed to move bookmark');
     }
@@ -242,7 +261,11 @@ export class BookmarkService {
     userId: string,
     bookmarkIds: string[],
     tagNames: string[]
-  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+  ): Promise<{
+    processedCount: number;
+    failedCount: number;
+    errors: Array<{ bookmarkId: string; error: string }>;
+  }> {
     const errors: Array<{ bookmarkId: string; error: string }> = [];
     let processedCount = 0;
 
@@ -290,7 +313,11 @@ export class BookmarkService {
     userId: string,
     bookmarkIds: string[],
     tagNames: string[]
-  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+  ): Promise<{
+    processedCount: number;
+    failedCount: number;
+    errors: Array<{ bookmarkId: string; error: string }>;
+  }> {
     const errors: Array<{ bookmarkId: string; error: string }> = [];
     let processedCount = 0;
 
@@ -298,7 +325,10 @@ export class BookmarkService {
     const tagIds: string[] = [];
     for (const name of tagNames) {
       const normalizedName = name.toLowerCase().trim();
-      const tag = await this.tagRepository.findByNormalizedName(userId, normalizedName);
+      const tag = await this.tagRepository.findByNormalizedName(
+        userId,
+        normalizedName
+      );
       if (tag) {
         tagIds.push(tag.id);
       }
@@ -344,7 +374,11 @@ export class BookmarkService {
     userId: string,
     bookmarkIds: string[],
     collectionId: string | null
-  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+  ): Promise<{
+    processedCount: number;
+    failedCount: number;
+    errors: Array<{ bookmarkId: string; error: string }>;
+  }> {
     const errors: Array<{ bookmarkId: string; error: string }> = [];
 
     // Verify ownership of all bookmarks
@@ -385,7 +419,11 @@ export class BookmarkService {
   async bulkDeleteBookmarks(
     userId: string,
     bookmarkIds: string[]
-  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+  ): Promise<{
+    processedCount: number;
+    failedCount: number;
+    errors: Array<{ bookmarkId: string; error: string }>;
+  }> {
     const errors: Array<{ bookmarkId: string; error: string }> = [];
 
     // Verify ownership of all bookmarks
@@ -408,7 +446,8 @@ export class BookmarkService {
     }
 
     // Perform bulk delete
-    const processedCount = await this.bookmarkRepository.bulkDelete(bookmarkIds);
+    const processedCount =
+      await this.bookmarkRepository.bulkDelete(bookmarkIds);
 
     return {
       processedCount,
@@ -440,16 +479,69 @@ export class BookmarkService {
   }
 
   /**
+   * Get archived snapshot content for a bookmark
+   */
+  async getBookmarkSnapshot(
+    bookmarkId: string,
+    userId: string
+  ): Promise<string | null> {
+    // Verify ownership
+    const bookmark = await this.bookmarkRepository.findById(bookmarkId);
+    if (!bookmark) {
+      throw new Error('Bookmark not found');
+    }
+
+    if (bookmark.ownerId !== userId) {
+      throw new Error('Access denied');
+    }
+
+    // Check if snapshot exists
+    if (!bookmark.contentSnapshotPath) {
+      return null;
+    }
+
+    // If no storage client, return null
+    if (!this.storageClient) {
+      return null;
+    }
+
+    try {
+      // Get snapshot from storage
+      const stream = await this.storageClient.getFile(
+        bookmark.contentSnapshotPath
+      );
+
+      // Convert stream to string
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.from(chunk));
+      }
+      const content = Buffer.concat(chunks).toString('utf-8');
+
+      return content;
+    } catch (error) {
+      console.error('Failed to retrieve snapshot:', error);
+      return null;
+    }
+  }
+
+  /**
    * Create or get existing tags
    */
-  private async createOrGetTags(userId: string, tagNames: string[]): Promise<any[]> {
-    const tags: any[] = [];
+  private async createOrGetTags(
+    userId: string,
+    tagNames: string[]
+  ): Promise<any[]> {
+    const tags: unknown[] = [];
 
     for (const name of tagNames) {
       const normalizedName = name.toLowerCase().trim();
 
       // Try to find existing tag
-      let tag = await this.tagRepository.findByNormalizedName(userId, normalizedName);
+      let tag = await this.tagRepository.findByNormalizedName(
+        userId,
+        normalizedName
+      );
 
       // Create if doesn't exist
       if (!tag) {

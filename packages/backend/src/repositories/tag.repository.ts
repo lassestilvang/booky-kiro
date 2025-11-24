@@ -39,11 +39,7 @@ export class TagRepository extends BaseRepository<Tag> {
   /**
    * Create tag with normalized name
    */
-  async createTag(
-    ownerId: string,
-    name: string,
-    color?: string
-  ): Promise<Tag> {
+  async createTag(ownerId: string, name: string, color?: string): Promise<Tag> {
     const normalizedName = this.normalizeName(name);
 
     // Check if tag already exists
@@ -87,10 +83,7 @@ export class TagRepository extends BaseRepository<Tag> {
   /**
    * Merge tags - consolidate source tags into target tag
    */
-  async mergeTags(
-    sourceTagIds: string[],
-    targetTagId: string
-  ): Promise<void> {
+  async mergeTags(sourceTagIds: string[], targetTagId: string): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -105,7 +98,7 @@ export class TagRepository extends BaseRepository<Tag> {
          )`,
         [targetTagId, sourceTagIds]
       );
-      
+
       // Then update the remaining ones
       await client.query(
         `UPDATE bookmark_tags
@@ -168,9 +161,10 @@ export class TagRepository extends BaseRepository<Tag> {
   /**
    * Get popular tags for a user
    */
-  async getPopularTags(ownerId: string, limit: number = 10): Promise<
-    Array<Tag & { usageCount: number }>
-  > {
+  async getPopularTags(
+    ownerId: string,
+    limit: number = 10
+  ): Promise<Array<Tag & { usageCount: number }>> {
     const result = await this.pool.query(
       `SELECT t.*, COUNT(bt.bookmark_id) as usage_count
        FROM tags t

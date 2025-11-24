@@ -1,5 +1,4 @@
 import {
-  Bookmark,
   BookmarkWithRelations,
   Collection,
   Tag,
@@ -146,7 +145,6 @@ export class ExportService {
     } else {
       // Export all bookmarks grouped by collection
       const collections = await this.collectionRepository.findByOwner(userId);
-      const collectionMap = new Map(collections.map((c) => [c.id, c]));
 
       // Group bookmarks by collection
       const bookmarksByCollection = new Map<

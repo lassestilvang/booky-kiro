@@ -31,7 +31,9 @@ const shareCollectionSchema = z.object({
 /**
  * Create collection management routes
  */
-export function createCollectionRoutes(collectionService: CollectionService): Router {
+export function createCollectionRoutes(
+  collectionService: CollectionService
+): Router {
   const router = Router();
 
   /**
@@ -52,7 +54,9 @@ export function createCollectionRoutes(collectionService: CollectionService): Ro
         return;
       }
 
-      const collections = await collectionService.getUserCollections(req.user.userId);
+      const collections = await collectionService.getUserCollections(
+        req.user.userId
+      );
 
       res.status(200).json({
         collections,
@@ -103,7 +107,10 @@ export function createCollectionRoutes(collectionService: CollectionService): Ro
       const data = createCollectionSchema.parse(req.body);
 
       // Create collection
-      const collection = await collectionService.createCollection(req.user.userId, data);
+      const collection = await collectionService.createCollection(
+        req.user.userId,
+        data
+      );
 
       res.status(201).json({
         collection,
@@ -191,7 +198,10 @@ export function createCollectionRoutes(collectionService: CollectionService): Ro
         const statusCode = error.message === 'Access denied' ? 403 : 500;
         res.status(statusCode).json({
           error: {
-            code: error.message === 'Access denied' ? 'ACCESS_DENIED' : 'INTERNAL_ERROR',
+            code:
+              error.message === 'Access denied'
+                ? 'ACCESS_DENIED'
+                : 'INTERNAL_ERROR',
             message: error.message,
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
@@ -566,7 +576,10 @@ export function createCollectionRoutes(collectionService: CollectionService): Ro
         return;
       }
 
-      const shareSlug = await collectionService.makePublic(req.params.id, req.user.userId);
+      const shareSlug = await collectionService.makePublic(
+        req.params.id,
+        req.user.userId
+      );
 
       res.status(200).json({
         shareSlug,
@@ -657,7 +670,9 @@ export function createCollectionRoutes(collectionService: CollectionService): Ro
    */
   router.get('/public/:shareSlug', async (req: Request, res: Response) => {
     try {
-      const collection = await collectionService.getPublicCollection(req.params.shareSlug);
+      const collection = await collectionService.getPublicCollection(
+        req.params.shareSlug
+      );
 
       if (!collection) {
         res.status(404).json({

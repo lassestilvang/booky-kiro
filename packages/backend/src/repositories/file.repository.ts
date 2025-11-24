@@ -36,7 +36,7 @@ export class FileRepository {
 
     const result = await this.pool.query(query, values);
     const row = result.rows[0];
-    
+
     // Convert sizeBytes to number (PostgreSQL returns BIGINT as string)
     return {
       ...row,
@@ -64,7 +64,7 @@ export class FileRepository {
 
     const result = await this.pool.query(query, [fileId]);
     if (!result.rows[0]) return null;
-    
+
     const row = result.rows[0];
     // Convert sizeBytes to number (PostgreSQL returns BIGINT as string)
     return {
@@ -76,7 +76,11 @@ export class FileRepository {
   /**
    * Find files by owner
    */
-  async findByOwner(ownerId: string, limit: number = 50, offset: number = 0): Promise<File[]> {
+  async findByOwner(
+    ownerId: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<File[]> {
     const query = `
       SELECT 
         id, 
@@ -95,7 +99,7 @@ export class FileRepository {
 
     const result = await this.pool.query(query, [ownerId, limit, offset]);
     // Convert sizeBytes to number for all rows
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       ...row,
       sizeBytes: parseInt(row.sizeBytes, 10),
     }));
@@ -122,7 +126,7 @@ export class FileRepository {
 
     const result = await this.pool.query(query, [userId]);
     // Convert sizeBytes to number for all rows
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       ...row,
       sizeBytes: parseInt(row.sizeBytes, 10),
     }));
@@ -149,7 +153,7 @@ export class FileRepository {
 
     const result = await this.pool.query(query, [bookmarkId]);
     // Convert sizeBytes to number for all rows
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       ...row,
       sizeBytes: parseInt(row.sizeBytes, 10),
     }));

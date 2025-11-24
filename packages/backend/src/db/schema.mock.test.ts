@@ -15,7 +15,9 @@ describe('Database Schema Property Tests (Mock)', () => {
           fc.record({
             title: fc.string({ minLength: 1, maxLength: 500 }),
             url: fc.webUrl(),
-            excerpt: fc.option(fc.string({ maxLength: 1000 }), { nil: undefined }),
+            excerpt: fc.option(fc.string({ maxLength: 1000 }), {
+              nil: undefined,
+            }),
             contentSnapshotPath: fc.option(fc.string(), { nil: undefined }),
             contentIndexed: fc.boolean(),
             type: fc.constantFrom<BookmarkType>(
@@ -29,7 +31,9 @@ describe('Database Schema Property Tests (Mock)', () => {
             coverUrl: fc.option(fc.webUrl(), { nil: undefined }),
             isDuplicate: fc.boolean(),
             isBroken: fc.boolean(),
-            customOrder: fc.option(fc.integer({ min: 0, max: 10000 }), { nil: undefined }),
+            customOrder: fc.option(fc.integer({ min: 0, max: 10000 }), {
+              nil: undefined,
+            }),
           }),
           (bookmarkData) => {
             // Verify the generated data has the correct structure
@@ -43,7 +47,7 @@ describe('Database Schema Property Tests (Mock)', () => {
             expect(typeof bookmarkData.contentIndexed).toBe('boolean');
             expect(typeof bookmarkData.isDuplicate).toBe('boolean');
             expect(typeof bookmarkData.isBroken).toBe('boolean');
-            
+
             if (bookmarkData.customOrder !== undefined) {
               expect(bookmarkData.customOrder).toBeGreaterThanOrEqual(0);
               expect(bookmarkData.customOrder).toBeLessThanOrEqual(10000);
@@ -64,7 +68,9 @@ describe('Database Schema Property Tests (Mock)', () => {
             icon: fc.string({ minLength: 1, maxLength: 100 }),
             isPublic: fc.boolean(),
             shareSlug: fc.option(
-              fc.string({ minLength: 5, maxLength: 50 }).filter(s => /^[a-z0-9-]+$/.test(s)),
+              fc
+                .string({ minLength: 5, maxLength: 50 })
+                .filter((s) => /^[a-z0-9-]+$/.test(s)),
               { nil: undefined }
             ),
             sortOrder: fc.integer({ min: 0, max: 10000 }),
@@ -79,7 +85,7 @@ describe('Database Schema Property Tests (Mock)', () => {
             expect(typeof collectionData.isPublic).toBe('boolean');
             expect(collectionData.sortOrder).toBeGreaterThanOrEqual(0);
             expect(collectionData.sortOrder).toBeLessThanOrEqual(10000);
-            
+
             if (collectionData.shareSlug !== undefined) {
               expect(collectionData.shareSlug).toMatch(/^[a-z0-9-]+$/);
               expect(collectionData.shareSlug.length).toBeGreaterThanOrEqual(5);

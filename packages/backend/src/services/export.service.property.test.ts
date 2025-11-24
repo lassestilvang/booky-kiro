@@ -1,13 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import * as fc from 'fast-check';
 import { Pool } from 'pg';
 import { ExportService } from './export.service.js';
-import { ImportService } from './import.service.js';
 import { BookmarkRepository } from '../repositories/bookmark.repository.js';
 import { CollectionRepository } from '../repositories/collection.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
-import { Bookmark, Collection, Tag } from '@bookmark-manager/shared';
+import { Bookmark } from '@bookmark-manager/shared';
 
 // Test database configuration
 const testPool = new Pool({
@@ -26,11 +25,6 @@ const userRepository = new UserRepository(testPool);
 
 // Initialize services
 const exportService = new ExportService(
-  bookmarkRepository,
-  collectionRepository,
-  tagRepository
-);
-const importService = new ImportService(
   bookmarkRepository,
   collectionRepository,
   tagRepository

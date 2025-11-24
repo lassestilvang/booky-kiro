@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { ReminderService } from '../services/reminder.service.js';
-import { createAuthMiddleware, requireProPlan } from '../middleware/auth.middleware.js';
+import {
+  createAuthMiddleware,
+  requireProPlan,
+} from '../middleware/auth.middleware.js';
 import { AuthService } from '../services/auth.service.js';
 import {
   CreateReminderRequest,
@@ -55,7 +58,10 @@ export function createReminderRoutes(
       const userId = req.user!.userId;
       const reminderId = req.params.id;
 
-      const reminder = await reminderService.getReminderById(reminderId, userId);
+      const reminder = await reminderService.getReminderById(
+        reminderId,
+        userId
+      );
 
       if (!reminder) {
         res.status(404).json({
@@ -105,7 +111,10 @@ export function createReminderRoutes(
         const userId = req.user!.userId;
         const bookmarkId = req.params.bookmarkId;
 
-        const reminders = await reminderService.getBookmarkReminders(bookmarkId, userId);
+        const reminders = await reminderService.getBookmarkReminders(
+          bookmarkId,
+          userId
+        );
 
         res.json({ reminders });
       } catch (error: any) {
@@ -187,7 +196,8 @@ export function createReminderRoutes(
         res.status(403).json({
           error: {
             code: 'ACCESS_DENIED',
-            message: 'You do not have permission to create reminders for this bookmark',
+            message:
+              'You do not have permission to create reminders for this bookmark',
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
           },
@@ -228,7 +238,11 @@ export function createReminderRoutes(
       const reminderId = req.params.id;
       const data: UpdateReminderRequest = req.body;
 
-      const reminder = await reminderService.updateReminder(reminderId, userId, data);
+      const reminder = await reminderService.updateReminder(
+        reminderId,
+        userId,
+        data
+      );
 
       res.json(reminder);
     } catch (error: any) {
@@ -283,50 +297,56 @@ export function createReminderRoutes(
   /**
    * POST /v1/reminders/:id/dismiss - Dismiss (mark as completed) a reminder
    */
-  router.post('/:id/dismiss', async (req: Request, res: Response): Promise<void> => {
-    try {
-      const userId = req.user!.userId;
-      const reminderId = req.params.id;
+  router.post(
+    '/:id/dismiss',
+    async (req: Request, res: Response): Promise<void> => {
+      try {
+        const userId = req.user!.userId;
+        const reminderId = req.params.id;
 
-      const reminder = await reminderService.dismissReminder(reminderId, userId);
+        const reminder = await reminderService.dismissReminder(
+          reminderId,
+          userId
+        );
 
-      res.json(reminder);
-    } catch (error: any) {
-      if (error.message === 'Reminder not found') {
-        res.status(404).json({
+        res.json(reminder);
+      } catch (error: any) {
+        if (error.message === 'Reminder not found') {
+          res.status(404).json({
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Reminder not found',
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+          return;
+        }
+
+        if (error.message.includes('Unauthorized')) {
+          res.status(403).json({
+            error: {
+              code: 'ACCESS_DENIED',
+              message: 'You do not have permission to dismiss this reminder',
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+          return;
+        }
+
+        console.error('Error dismissing reminder:', error);
+        res.status(500).json({
           error: {
-            code: 'NOT_FOUND',
-            message: 'Reminder not found',
+            code: 'INTERNAL_ERROR',
+            message: 'Failed to dismiss reminder',
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
           },
         });
-        return;
       }
-
-      if (error.message.includes('Unauthorized')) {
-        res.status(403).json({
-          error: {
-            code: 'ACCESS_DENIED',
-            message: 'You do not have permission to dismiss this reminder',
-            timestamp: new Date().toISOString(),
-            requestId: req.headers['x-request-id'] || 'unknown',
-          },
-        });
-        return;
-      }
-
-      console.error('Error dismissing reminder:', error);
-      res.status(500).json({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to dismiss reminder',
-          timestamp: new Date().toISOString(),
-          requestId: req.headers['x-request-id'] || 'unknown',
-        },
-      });
     }
-  });
+  );
 
   /**
    * DELETE /v1/reminders/:id - Delete a reminder

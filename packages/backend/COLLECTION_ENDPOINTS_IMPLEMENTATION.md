@@ -26,11 +26,13 @@ Created a comprehensive service layer for collection management with the followi
 Implemented RESTful API endpoints with proper validation and error handling:
 
 #### GET /v1/collections
+
 - Lists all collections for the authenticated user
 - Returns collection array with total count
 - Requires authentication
 
 #### POST /v1/collections
+
 - Creates a new collection
 - Validates request body with Zod schema
 - Required fields: `title`
@@ -38,12 +40,14 @@ Implemented RESTful API endpoints with proper validation and error handling:
 - Returns created collection with 201 status
 
 #### GET /v1/collections/:id
+
 - Gets collection details by ID
 - Verifies ownership
 - Includes bookmark count
 - Returns 404 if not found, 403 if access denied
 
 #### PUT /v1/collections/:id
+
 - Updates collection fields
 - Validates request body with Zod schema
 - Verifies ownership
@@ -51,6 +55,7 @@ Implemented RESTful API endpoints with proper validation and error handling:
 - Returns updated collection
 
 #### DELETE /v1/collections/:id
+
 - Deletes collection
 - Query parameter `moveToDefault` (default: true)
   - `true`: Moves bookmarks to uncategorized
@@ -73,22 +78,26 @@ Added `findByCollection(collectionId)` method to support collection deletion ope
 Implemented comprehensive property-based tests for **Property 9: Collection Deletion Behavior**:
 
 #### Test 1: Move to Default Collection
+
 - Validates that deleting a collection with `moveToDefault=true` moves all bookmarks to null collection
 - Ensures no bookmarks are orphaned
 - Runs 100 iterations with random data
 
 #### Test 2: Delete All Bookmarks
+
 - Validates that deleting a collection with `moveToDefault=false` deletes all bookmarks
 - Ensures no orphaned bookmarks remain
 - Runs 100 iterations with random data
 
 #### Test 3: Empty Collection Deletion
+
 - Validates that deleting an empty collection succeeds without errors
 - Runs 100 iterations with random data
 
 ## Validation and Error Handling
 
 All endpoints include:
+
 - Authentication checks (401 Unauthorized)
 - Ownership verification (403 Access Denied)
 - Input validation with Zod schemas (400 Validation Error)
@@ -113,6 +122,7 @@ This implementation validates the following requirements:
 The property-based tests are correctly implemented and will run successfully once the database is properly configured. The tests currently fail due to missing database role `bookmark_user`, which is a setup issue, not a code issue.
 
 To run tests successfully:
+
 1. Ensure Docker is running
 2. Start database services: `npm run docker:up`
 3. Run tests: `npm run test:run`
@@ -120,6 +130,7 @@ To run tests successfully:
 ## Next Steps
 
 The collection management endpoints are complete and ready for integration with:
+
 - Frontend collection UI components
 - Bookmark management endpoints (task 7)
 - Tag management endpoints (task 8)

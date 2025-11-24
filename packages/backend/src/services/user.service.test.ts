@@ -101,7 +101,9 @@ describe('UserService', () => {
         email: 'new@example.com',
       });
 
-      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith('new@example.com');
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
+        'new@example.com'
+      );
       expect(result.email).toBe('new@example.com');
     });
 
@@ -183,9 +185,9 @@ describe('UserService', () => {
       vi.mocked(mockUserRepository.findById).mockResolvedValue(mockUser);
       vi.mocked(mockUserRepository.delete).mockResolvedValue(false);
 
-      await expect(
-        userService.deleteUserAccount('user-123')
-      ).rejects.toThrow('Failed to delete user account');
+      await expect(userService.deleteUserAccount('user-123')).rejects.toThrow(
+        'Failed to delete user account'
+      );
     });
   });
 

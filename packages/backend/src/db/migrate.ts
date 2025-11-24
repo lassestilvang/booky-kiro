@@ -8,7 +8,7 @@ const __dirname = dirname(__filename);
 
 export async function runMigrations(): Promise<void> {
   const client = await pool.connect();
-  
+
   try {
     // Create migrations tracking table if it doesn't exist
     await client.query(`
@@ -39,10 +39,10 @@ export async function runMigrations(): Promise<void> {
     for (const file of migrationFiles) {
       if (!appliedMigrations.has(file)) {
         console.log(`Running migration: ${file}`);
-        
+
         const migrationPath = join(migrationsDir, file);
         const sql = readFileSync(migrationPath, 'utf-8');
-        
+
         await client.query('BEGIN');
         try {
           await client.query(sql);

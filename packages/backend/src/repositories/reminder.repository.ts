@@ -15,12 +15,14 @@ export class ReminderRepository extends BaseRepository<Reminder> {
    */
   async create(data: Partial<Reminder>): Promise<Reminder> {
     const dataToInsert = { ...data };
-    
+
     // Convert notification_channels array to JSON string for JSONB column
     if (dataToInsert.notificationChannels) {
-      (dataToInsert as any).notificationChannels = JSON.stringify(dataToInsert.notificationChannels);
+      (dataToInsert as any).notificationChannels = JSON.stringify(
+        dataToInsert.notificationChannels
+      );
     }
-    
+
     return super.create(dataToInsert);
   }
 
@@ -89,7 +91,10 @@ export class ReminderRepository extends BaseRepository<Reminder> {
   /**
    * Update reminder time
    */
-  async updateRemindAt(reminderId: string, remindAt: Date): Promise<Reminder | null> {
+  async updateRemindAt(
+    reminderId: string,
+    remindAt: Date
+  ): Promise<Reminder | null> {
     const result = await this.pool.query(
       'UPDATE reminders SET remind_at = $1 WHERE id = $2 RETURNING *',
       [remindAt, reminderId]

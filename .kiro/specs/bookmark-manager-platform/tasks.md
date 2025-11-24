@@ -570,52 +570,52 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - **Property 14: View Preference Persistence**
   - **Validates: Requirements 4.5**
 
-- [ ] 32. Implement collection management UI
-- [ ] 32.1 Create collection sidebar
+- [x] 32. Implement collection management UI
+- [x] 32.1 Create collection sidebar
   - Display collection hierarchy
   - Support drag-and-drop organization
   - Show collection icons
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 32.2 Create collection CRUD dialogs
+- [x] 32.2 Create collection CRUD dialogs
   - Collection creation modal
   - Collection edit modal
   - Collection delete confirmation
   - _Requirements: 2.1, 2.4_
 
-- [ ] 33. Implement bookmark management UI
-- [ ] 33.1 Create bookmark creation form
+- [x] 33. Implement bookmark management UI
+- [x] 33.1 Create bookmark creation form
   - URL input with metadata extraction
   - Collection selection
   - Tag input with autocomplete
   - _Requirements: 1.1_
 
-- [ ] 33.2 Create bookmark detail view
+- [x] 33.2 Create bookmark detail view
   - Display all bookmark metadata
   - Show tags and highlights
   - Provide edit and delete actions
   - _Requirements: 1.2_
 
-- [ ] 33.3 Implement bookmark filtering UI
+- [x] 33.3 Implement bookmark filtering UI
   - Tag filter chips
   - Type, domain, date range filters
   - Search input
   - _Requirements: 3.2, 3.3_
 
-- [ ] 34. Implement search UI
-- [ ] 34.1 Create search interface
+- [x] 34. Implement search UI
+- [x] 34.1 Create search interface
   - Search input with autocomplete
   - Filter controls
   - Results display with snippets
   - _Requirements: 17.1, 17.5_
 
-- [ ] 34.2 Add Pro full-text search toggle
+- [x] 34.2 Add Pro full-text search toggle
   - Show Pro badge for full-text search
   - Enforce Pro tier access
   - _Requirements: 17.3_
 
-- [ ] 35. Implement instant preview
-- [ ] 35.1 Create preview modal
+- [x] 35. Implement instant preview
+- [x] 35.1 Create preview modal
   - Display readable article view
   - Embed video player for videos
   - Show archived snapshot when original unavailable

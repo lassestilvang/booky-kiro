@@ -4,6 +4,7 @@ import { JWTPayload } from '../services/auth.service.js';
 
 // Extend Express Request to include user data
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: JWTPayload;

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import * as fc from 'fast-check';
 import { HighlightService } from './highlight.service.js';
 import { HighlightRepository } from '../repositories/highlight.repository.js';
@@ -26,7 +26,11 @@ describe('HighlightService Property-Based Tests', () => {
     bookmarkRepository = new BookmarkRepository(pool);
     userRepository = new UserRepository(pool);
     searchService = new SearchService();
-    highlightService = new HighlightService(highlightRepository, bookmarkRepository, searchService);
+    highlightService = new HighlightService(
+      highlightRepository,
+      bookmarkRepository,
+      searchService
+    );
 
     // Create a test user with Pro plan
     const testUser = await userRepository.createWithPassword(
@@ -37,7 +41,10 @@ describe('HighlightService Property-Based Tests', () => {
     testUserId = testUser.id;
 
     // Update user to Pro plan
-    await pool.query('UPDATE users SET plan = $1 WHERE id = $2', ['pro', testUserId]);
+    await pool.query('UPDATE users SET plan = $1 WHERE id = $2', [
+      'pro',
+      testUserId,
+    ]);
 
     // Create a test bookmark
     const bookmark = await bookmarkRepository.create({
@@ -66,29 +73,47 @@ describe('HighlightService Property-Based Tests', () => {
 
   beforeEach(async () => {
     // Clean up highlights before each test
-    await pool.query('DELETE FROM highlights WHERE owner_id = $1', [testUserId]);
+    await pool.query('DELETE FROM highlights WHERE owner_id = $1', [
+      testUserId,
+    ]);
   });
 
   /**
    * Feature: bookmark-manager-platform, Property 31: Highlight Storage Completeness
-   * 
+   *
    * For any highlight created by a Pro user, the system should store the selected text,
    * color, annotation, position context, and snapshot reference.
-   * 
+   *
    * Validates: Requirements 10.1
    */
   it('Property 31: Highlight Storage Completeness - all fields are persisted correctly', async () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate random highlight data
-        fc.string({ minLength: 1, maxLength: 500 }).filter(s => s.trim().length > 0), // textSelected
-        fc.hexaString({ minLength: 6, maxLength: 6 }).map(s => `#${s}`), // color
-        fc.option(fc.string({ minLength: 1, maxLength: 1000 }), { nil: undefined }), // annotationMd
+        fc
+          .string({ minLength: 1, maxLength: 500 })
+          .filter((s) => s.trim().length > 0), // textSelected
+        fc.hexaString({ minLength: 6, maxLength: 6 }).map((s) => `#${s}`), // color
+        fc.option(fc.string({ minLength: 1, maxLength: 1000 }), {
+          nil: undefined,
+        }), // annotationMd
         fc.string({ minLength: 1, maxLength: 100 }), // before context
         fc.string({ minLength: 1, maxLength: 100 }), // after context
-        fc.option(fc.string({ minLength: 1, maxLength: 200 }), { nil: undefined }), // xpath
-        fc.option(fc.string({ minLength: 1, maxLength: 100 }), { nil: undefined }), // snapshotId
-        async (textSelected, color, annotationMd, before, after, xpath, snapshotId) => {
+        fc.option(fc.string({ minLength: 1, maxLength: 200 }), {
+          nil: undefined,
+        }), // xpath
+        fc.option(fc.string({ minLength: 1, maxLength: 100 }), {
+          nil: undefined,
+        }), // snapshotId
+        async (
+          textSelected,
+          color,
+          annotationMd,
+          before,
+          after,
+          xpath,
+          snapshotId
+        ) => {
           // Ensure test data is set
           if (!testUserId || !testBookmarkId) {
             throw new Error('Test data is not set');
@@ -108,7 +133,10 @@ describe('HighlightService Property-Based Tests', () => {
             snapshotId,
           };
 
-          const highlight = await highlightService.createHighlight(testUserId, highlightData);
+          const highlight = await highlightService.createHighlight(
+            testUserId,
+            highlightData
+          );
 
           // Verify all fields are stored correctly
           expect(highlight.bookmarkId).toBe(testBookmarkId);
@@ -125,7 +153,10 @@ describe('HighlightService Property-Based Tests', () => {
           expect(highlight.updatedAt).toBeInstanceOf(Date);
 
           // Retrieve and verify persistence
-          const retrieved = await highlightService.getHighlightById(highlight.id, testUserId);
+          const retrieved = await highlightService.getHighlightById(
+            highlight.id,
+            testUserId
+          );
           expect(retrieved).not.toBeNull();
           expect(retrieved!.textSelected).toBe(textSelected);
           expect(retrieved!.color).toBe(color);
@@ -146,19 +177,21 @@ describe('HighlightService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 32: Highlight Color Update
-   * 
+   *
    * For any existing highlight, changing the highlight color should update the
    * highlight record immediately and persist the new color.
-   * 
+   *
    * Validates: Requirements 10.3
    */
   it('Property 32: Highlight Color Update - color changes are persisted immediately', async () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate initial and new colors
-        fc.hexaString({ minLength: 6, maxLength: 6 }).map(s => `#${s}`),
-        fc.hexaString({ minLength: 6, maxLength: 6 }).map(s => `#${s}`),
-        fc.string({ minLength: 1, maxLength: 500 }).filter(s => s.trim().length > 0),
+        fc.hexaString({ minLength: 6, maxLength: 6 }).map((s) => `#${s}`),
+        fc.hexaString({ minLength: 6, maxLength: 6 }).map((s) => `#${s}`),
+        fc
+          .string({ minLength: 1, maxLength: 500 })
+          .filter((s) => s.trim().length > 0),
         async (initialColor, newColor, textSelected) => {
           // Ensure test data is set
           if (!testUserId || !testBookmarkId) {
@@ -188,10 +221,15 @@ describe('HighlightService Property-Based Tests', () => {
 
           // Verify color is updated immediately
           expect(updated.color).toBe(newColor);
-          expect(updated.updatedAt.getTime()).toBeGreaterThan(highlight.createdAt.getTime());
+          expect(updated.updatedAt.getTime()).toBeGreaterThan(
+            highlight.createdAt.getTime()
+          );
 
           // Retrieve and verify persistence
-          const retrieved = await highlightService.getHighlightById(highlight.id, testUserId);
+          const retrieved = await highlightService.getHighlightById(
+            highlight.id,
+            testUserId
+          );
           expect(retrieved).not.toBeNull();
           expect(retrieved!.color).toBe(newColor);
 
@@ -205,20 +243,24 @@ describe('HighlightService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 16: Highlight Creation with Context
-   * 
+   *
    * For any text selection from a saved page, creating a highlight should store
    * the selected text along with surrounding context (before/after text and position information).
-   * 
+   *
    * Validates: Requirements 6.4
    */
   it('Property 16: Highlight Creation with Context - context is stored with selection', async () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate text selection and context
-        fc.string({ minLength: 1, maxLength: 500 }).filter(s => s.trim().length > 0), // textSelected
+        fc
+          .string({ minLength: 1, maxLength: 500 })
+          .filter((s) => s.trim().length > 0), // textSelected
         fc.string({ minLength: 1, maxLength: 200 }), // before context
         fc.string({ minLength: 1, maxLength: 200 }), // after context
-        fc.option(fc.string({ minLength: 1, maxLength: 300 }), { nil: undefined }), // xpath
+        fc.option(fc.string({ minLength: 1, maxLength: 300 }), {
+          nil: undefined,
+        }), // xpath
         async (textSelected, before, after, xpath) => {
           // Ensure test data is set
           if (!testUserId || !testBookmarkId) {
@@ -246,7 +288,10 @@ describe('HighlightService Property-Based Tests', () => {
           expect(highlight.positionContext.xpath).toBe(xpath);
 
           // Retrieve and verify all context is persisted
-          const retrieved = await highlightService.getHighlightById(highlight.id, testUserId);
+          const retrieved = await highlightService.getHighlightById(
+            highlight.id,
+            testUserId
+          );
           expect(retrieved).not.toBeNull();
           expect(retrieved!.textSelected).toBe(textSelected);
           expect(retrieved!.positionContext.before).toBe(before);
@@ -263,15 +308,16 @@ describe('HighlightService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 33: Highlight Search Integration
-   * 
+   *
    * For any Pro user search query, the search results should include bookmarks
    * where the query terms appear in highlight text or annotations.
-   * 
+   *
    * Validates: Requirements 10.4
    */
   it('Property 33: Highlight Search Integration - search includes highlight text', async () => {
     // First, ensure the test bookmark is indexed in search
-    const bookmark = await bookmarkRepository.findByIdWithRelations(testBookmarkId);
+    const bookmark =
+      await bookmarkRepository.findByIdWithRelations(testBookmarkId);
     if (bookmark) {
       await searchService.indexBookmark({
         id: bookmark.id,
@@ -290,15 +336,19 @@ describe('HighlightService Property-Based Tests', () => {
         highlights_text: null,
       });
       // Wait for initial indexing
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     await fc.assert(
       fc.asyncProperty(
         // Generate unique search terms that won't appear in title/excerpt
-        fc.string({ minLength: 8, maxLength: 20 }).filter(s => /^[a-z]{8,20}$/.test(s)),
+        fc
+          .string({ minLength: 8, maxLength: 20 })
+          .filter((s) => /^[a-z]{8,20}$/.test(s)),
         fc.string({ minLength: 1, maxLength: 200 }),
-        fc.option(fc.string({ minLength: 1, maxLength: 500 }), { nil: undefined }),
+        fc.option(fc.string({ minLength: 1, maxLength: 500 }), {
+          nil: undefined,
+        }),
         async (uniqueTerm, contextText, annotationText) => {
           // Ensure test data is set
           if (!testUserId || !testBookmarkId) {
@@ -307,7 +357,9 @@ describe('HighlightService Property-Based Tests', () => {
 
           // Create a highlight with the unique term in the selected text
           const textSelected = `This is a test with ${uniqueTerm} in it`;
-          const annotation = annotationText ? `${annotationText} ${uniqueTerm}` : undefined;
+          const annotation = annotationText
+            ? `${annotationText} ${uniqueTerm}`
+            : undefined;
 
           const highlight = await highlightService.createHighlight(testUserId, {
             bookmarkId: testBookmarkId,
@@ -320,7 +372,7 @@ describe('HighlightService Property-Based Tests', () => {
           });
 
           // Wait for search index to update (MeiliSearch is eventually consistent)
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
 
           // Search for the unique term
           const searchResults = await searchService.search(
@@ -330,7 +382,9 @@ describe('HighlightService Property-Based Tests', () => {
           );
 
           // Verify the bookmark appears in search results
-          const foundBookmark = searchResults.results.find(r => r.id === testBookmarkId);
+          const foundBookmark = searchResults.results.find(
+            (r) => r.id === testBookmarkId
+          );
           expect(foundBookmark).toBeDefined();
           expect(foundBookmark?.id).toBe(testBookmarkId);
 
@@ -344,7 +398,7 @@ describe('HighlightService Property-Based Tests', () => {
           });
 
           // Wait for search index to update after deletion
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       ),
       { numRuns: 10 } // Reduced runs due to search index delays

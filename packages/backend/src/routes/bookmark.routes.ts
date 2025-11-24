@@ -49,12 +49,14 @@ const bulkActionSchema = z.object({
 });
 
 const updateCustomOrderSchema = z.object({
-  updates: z.array(
-    z.object({
-      id: z.string().uuid(),
-      order: z.number().int().min(0),
-    })
-  ).min(1),
+  updates: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        order: z.number().int().min(0),
+      })
+    )
+    .min(1),
 });
 
 /**
@@ -92,7 +94,9 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
       }
 
       if (queryParams.tags) {
-        filters.tags = queryParams.tags.split(',').map((t) => t.trim().toLowerCase());
+        filters.tags = queryParams.tags
+          .split(',')
+          .map((t) => t.trim().toLowerCase());
       }
 
       if (queryParams.type) {
@@ -201,7 +205,10 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
       const data = createBookmarkSchema.parse(req.body);
 
       // Create bookmark
-      const bookmark = await bookmarkService.createBookmark(req.user.userId, data);
+      const bookmark = await bookmarkService.createBookmark(
+        req.user.userId,
+        data
+      );
 
       res.status(201).json({
         id: bookmark.id,
@@ -242,6 +249,76 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
   });
 
   /**
+   * GET /bookmarks/:id/snapshot
+   * Get archived snapshot content for a bookmark
+   */
+  router.get('/:id/snapshot', async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+        return;
+      }
+
+      const snapshot = await bookmarkService.getBookmarkSnapshot(
+        req.params.id,
+        req.user.userId
+      );
+
+      if (!snapshot) {
+        res.status(404).json({
+          error: {
+            code: 'SNAPSHOT_NOT_FOUND',
+            message: 'Snapshot not found or not yet available',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+        return;
+      }
+
+      res.status(200).json({
+        content: snapshot,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        const statusCode =
+          error.message === 'Bookmark not found'
+            ? 404
+            : error.message === 'Access denied'
+              ? 403
+              : 500;
+        res.status(statusCode).json({
+          error: {
+            code:
+              error.message === 'Access denied'
+                ? 'ACCESS_DENIED'
+                : 'INTERNAL_ERROR',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else {
+        res.status(500).json({
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'An unexpected error occurred',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      }
+    }
+  });
+
+  /**
    * GET /bookmarks/:id
    * Get bookmark details with tags and highlights
    */
@@ -259,7 +336,10 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
         return;
       }
 
-      const bookmark = await bookmarkService.getBookmarkById(req.params.id, req.user.userId);
+      const bookmark = await bookmarkService.getBookmarkById(
+        req.params.id,
+        req.user.userId
+      );
 
       if (!bookmark) {
         res.status(404).json({
@@ -281,7 +361,10 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
         const statusCode = error.message === 'Access denied' ? 403 : 500;
         res.status(statusCode).json({
           error: {
-            code: error.message === 'Access denied' ? 'ACCESS_DENIED' : 'INTERNAL_ERROR',
+            code:
+              error.message === 'Access denied'
+                ? 'ACCESS_DENIED'
+                : 'INTERNAL_ERROR',
             message: error.message,
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
@@ -461,12 +544,11 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
           },
         });
       } else if (error instanceof Error) {
-        const statusCode =
-          error.message.includes('not found')
-            ? 404
-            : error.message.includes('Access denied')
-              ? 403
-              : 400;
+        const statusCode = error.message.includes('not found')
+          ? 404
+          : error.message.includes('Access denied')
+            ? 403
+            : 400;
         res.status(statusCode).json({
           error: {
             code: 'UPDATE_ORDER_FAILED',
@@ -515,7 +597,8 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
         res.status(400).json({
           error: {
             code: 'BATCH_TOO_LARGE',
-            message: 'Batch size exceeds 100 items. Please use smaller batches.',
+            message:
+              'Batch size exceeds 100 items. Please use smaller batches.',
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',
           },
@@ -523,7 +606,11 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
         return;
       }
 
-      let result: { processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> };
+      let result: {
+        processedCount: number;
+        failedCount: number;
+        errors: Array<{ bookmarkId: string; error: string }>;
+      };
 
       // Execute the appropriate bulk action
       switch (data.action) {
@@ -585,7 +672,10 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
           break;
 
         case 'delete':
-          result = await bookmarkService.bulkDeleteBookmarks(req.user.userId, data.bookmarkIds);
+          result = await bookmarkService.bulkDeleteBookmarks(
+            req.user.userId,
+            data.bookmarkIds
+          );
           break;
 
         default:

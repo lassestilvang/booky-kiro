@@ -70,7 +70,10 @@ export class HighlightRepository extends BaseRepository<Highlight> {
   /**
    * Update highlight color
    */
-  async updateColor(highlightId: string, color: string): Promise<Highlight | null> {
+  async updateColor(
+    highlightId: string,
+    color: string
+  ): Promise<Highlight | null> {
     const result = await this.pool.query(
       'UPDATE highlights SET color = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
       [color, highlightId]

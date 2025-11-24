@@ -65,7 +65,7 @@ export class BackupRepository extends BaseRepository {
 
     const result = await this.pool.query(query, [id]);
     if (!result.rows[0]) return null;
-    
+
     const row = result.rows[0];
     return {
       ...row,
@@ -87,7 +87,7 @@ export class BackupRepository extends BaseRepository {
     `;
 
     const result = await this.pool.query(query, [userId]);
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       ...row,
       sizeBytes: parseInt(row.sizeBytes, 10),
     }));

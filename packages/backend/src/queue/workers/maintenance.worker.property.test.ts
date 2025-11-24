@@ -61,7 +61,7 @@ beforeEach(async () => {
 
 // Mock fetch for broken link tests
 const originalFetch = global.fetch;
-let mockFetchResponses: Map<
+const mockFetchResponses: Map<
   string,
   { status: number; shouldTimeout: boolean }
 > = new Map();
@@ -69,7 +69,7 @@ let mockFetchResponses: Map<
 function setupMockFetch() {
   global.fetch = async (
     url: string | URL | Request,
-    init?: RequestInit
+    _init?: RequestInit
   ): Promise<Response> => {
     const urlString =
       typeof url === 'string'
@@ -397,7 +397,6 @@ describe('Maintenance Worker Property Tests', () => {
           fc.boolean(),
           (content, extraSpaces, changeCase) => {
             // Create variations of the same content
-            let content1 = content;
             let content2 = content;
 
             // Add whitespace variations
@@ -410,7 +409,7 @@ describe('Maintenance Worker Property Tests', () => {
               content2 = content2.toUpperCase();
             }
 
-            const hash1 = computeContentHash(content1);
+            const hash1 = computeContentHash(content);
             const hash2 = computeContentHash(content2);
 
             // Same content should produce same hash despite formatting differences
@@ -460,26 +459,20 @@ describe('Maintenance Worker Property Tests', () => {
             });
 
             // Create bookmark
-            const result = await testPool.query(
+            await testPool.query(
               `INSERT INTO bookmarks (owner_id, title, url, domain, type, is_broken)
                VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id`,
               [testUserId, title, url, new URL(url).hostname, 'article', false]
             );
-            const bookmarkId = result.rows[0].id;
 
             // Simulate broken link detection logic
-            try {
-              const response = await fetch(url, { method: 'HEAD' });
-              const isBroken = response.status >= 400;
+            const response = await fetch(url, { method: 'HEAD' });
+            const isBroken = response.status >= 400;
 
-              // Verify that 4xx status is detected as broken
-              expect(isBroken).toBe(true);
-              expect(response.status).toBe(statusCode);
-            } catch (error) {
-              // Should not throw for 4xx
-              throw error;
-            }
+            // Verify that 4xx status is detected as broken
+            expect(isBroken).toBe(true);
+            expect(response.status).toBe(statusCode);
           }
         ),
         { numRuns: 20 }
@@ -507,26 +500,20 @@ describe('Maintenance Worker Property Tests', () => {
             });
 
             // Create bookmark
-            const result = await testPool.query(
+            await testPool.query(
               `INSERT INTO bookmarks (owner_id, title, url, domain, type, is_broken)
                VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id`,
               [testUserId, title, url, new URL(url).hostname, 'article', false]
             );
-            const bookmarkId = result.rows[0].id;
 
             // Simulate broken link detection logic
-            try {
-              const response = await fetch(url, { method: 'HEAD' });
-              const isBroken = response.status >= 400;
+            const response = await fetch(url, { method: 'HEAD' });
+            const isBroken = response.status >= 400;
 
-              // Verify that 5xx status is detected as broken
-              expect(isBroken).toBe(true);
-              expect(response.status).toBe(statusCode);
-            } catch (error) {
-              // Should not throw for 5xx
-              throw error;
-            }
+            // Verify that 5xx status is detected as broken
+            expect(isBroken).toBe(true);
+            expect(response.status).toBe(statusCode);
           }
         ),
         { numRuns: 20 }
@@ -554,13 +541,12 @@ describe('Maintenance Worker Property Tests', () => {
             });
 
             // Create bookmark
-            const result = await testPool.query(
+            await testPool.query(
               `INSERT INTO bookmarks (owner_id, title, url, domain, type, is_broken)
                VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id`,
               [testUserId, title, url, new URL(url).hostname, 'article', false]
             );
-            const bookmarkId = result.rows[0].id;
 
             // Simulate broken link detection logic
             const response = await fetch(url, { method: 'HEAD' });

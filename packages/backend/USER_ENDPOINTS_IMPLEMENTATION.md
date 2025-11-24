@@ -29,6 +29,7 @@ All endpoints require authentication via JWT token in Authorization header.
 ### 3. Main Application (`src/index.ts`)
 
 Updated to:
+
 - Initialize UserService with UserRepository
 - Mount user routes at `/v1/user` with authentication middleware
 - Configure Express server with proper middleware stack
@@ -42,12 +43,14 @@ Updated to:
 Retrieve the authenticated user's profile.
 
 **Request:**
+
 ```
 GET /v1/user
 Authorization: Bearer <access_token>
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "user": {
@@ -66,6 +69,7 @@ Authorization: Bearer <access_token>
 Update the authenticated user's profile.
 
 **Request:**
+
 ```
 PUT /v1/user
 Authorization: Bearer <access_token>
@@ -78,6 +82,7 @@ Content-Type: application/json
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "user": {
@@ -92,6 +97,7 @@ Content-Type: application/json
 ```
 
 **Error Responses:**
+
 - 400: Validation error
 - 401: Unauthorized (missing or invalid token)
 - 404: User not found
@@ -102,6 +108,7 @@ Content-Type: application/json
 Delete the authenticated user's account.
 
 **Request:**
+
 ```
 DELETE /v1/user
 Authorization: Bearer <access_token>
@@ -110,6 +117,7 @@ Authorization: Bearer <access_token>
 **Response (204 No Content)**
 
 **Error Responses:**
+
 - 401: Unauthorized
 - 404: User not found
 
@@ -118,12 +126,14 @@ Authorization: Bearer <access_token>
 Get statistics for the authenticated user.
 
 **Request:**
+
 ```
 GET /v1/user/stats
 Authorization: Bearer <access_token>
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "stats": {
@@ -141,6 +151,7 @@ Authorization: Bearer <access_token>
 ### Unit Tests
 
 **UserService Tests** (`src/services/user.service.test.ts`):
+
 - ✅ Get user profile by ID
 - ✅ Return null when user not found
 - ✅ Update user name
@@ -154,6 +165,7 @@ Authorization: Bearer <access_token>
 - ✅ Throw error if user not found when getting stats
 
 **User Routes Tests** (`src/routes/user.routes.test.ts`):
+
 - ✅ Return user profile when authenticated
 - ✅ Return 401 when not authenticated
 - ✅ Return user statistics when authenticated
@@ -180,6 +192,7 @@ This implementation satisfies the following requirements:
 ## Error Handling
 
 All endpoints return consistent error responses with:
+
 - Error code
 - Error message
 - Timestamp
@@ -188,6 +201,7 @@ All endpoints return consistent error responses with:
 ## Next Steps
 
 The following endpoints are ready to be implemented next:
+
 - Collection management endpoints (Task 6)
 - Bookmark management endpoints (Task 7)
 - Tag management endpoints (Task 8)

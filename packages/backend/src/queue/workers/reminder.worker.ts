@@ -12,7 +12,7 @@ import { Reminder } from '@bookmark-manager/shared';
 
 /**
  * Reminder Worker
- * 
+ *
  * Processes reminder notifications:
  * 1. Poll for due reminders
  * 2. Trigger notifications based on user preferences
@@ -47,7 +47,7 @@ async function sendEmailNotification(
   console.log(`  Bookmark: ${bookmarkTitle}`);
   console.log(`  URL: ${bookmarkUrl}`);
   console.log(`  Reminder ID: ${reminder.id}`);
-  
+
   // TODO: Implement actual email sending
   // Example:
   // await emailService.send({
@@ -71,7 +71,7 @@ async function sendPushNotification(
   console.log(`  Bookmark: ${bookmarkTitle}`);
   console.log(`  URL: ${bookmarkUrl}`);
   console.log(`  Reminder ID: ${reminder.id}`);
-  
+
   // TODO: Implement actual push notification
   // Example:
   // await pushService.send({
@@ -100,7 +100,7 @@ async function sendInAppNotification(
   console.log(`  Bookmark: ${bookmarkTitle}`);
   console.log(`  URL: ${bookmarkUrl}`);
   console.log(`  Reminder ID: ${reminder.id}`);
-  
+
   // TODO: Implement actual in-app notification storage
   // Example:
   // await dbPool.query(
@@ -119,61 +119,82 @@ async function sendInAppNotification(
  * Process a single reminder notification
  */
 async function processReminderNotification(reminder: Reminder): Promise<void> {
-  console.log(`Processing reminder ${reminder.id} for bookmark ${reminder.bookmarkId}`);
-  
+  console.log(
+    `Processing reminder ${reminder.id} for bookmark ${reminder.bookmarkId}`
+  );
+
   try {
     // Get bookmark details
     const bookmark = await bookmarkRepo.findById(reminder.bookmarkId);
     if (!bookmark) {
-      console.error(`Bookmark ${reminder.bookmarkId} not found for reminder ${reminder.id}`);
+      console.error(
+        `Bookmark ${reminder.bookmarkId} not found for reminder ${reminder.id}`
+      );
       // Mark reminder as completed anyway to prevent retries
       await reminderService.dismissReminder(reminder.id, reminder.ownerId);
       return;
     }
-    
+
     // Get user details
     const user = await userRepo.findById(reminder.ownerId);
     if (!user) {
-      console.error(`User ${reminder.ownerId} not found for reminder ${reminder.id}`);
+      console.error(
+        `User ${reminder.ownerId} not found for reminder ${reminder.id}`
+      );
       // Mark reminder as completed anyway to prevent retries
       await reminderService.dismissReminder(reminder.id, reminder.ownerId);
       return;
     }
-    
+
     // Send notifications based on user preferences
     const notificationPromises: Promise<void>[] = [];
-    
+
     for (const channel of reminder.notificationChannels) {
       switch (channel) {
         case 'email':
           notificationPromises.push(
-            sendEmailNotification(reminder, user.email, bookmark.title, bookmark.url)
+            sendEmailNotification(
+              reminder,
+              user.email,
+              bookmark.title,
+              bookmark.url
+            )
           );
           break;
-        
+
         case 'push':
           notificationPromises.push(
-            sendPushNotification(reminder, user.id, bookmark.title, bookmark.url)
+            sendPushNotification(
+              reminder,
+              user.id,
+              bookmark.title,
+              bookmark.url
+            )
           );
           break;
-        
+
         case 'in_app':
           notificationPromises.push(
-            sendInAppNotification(reminder, user.id, bookmark.title, bookmark.url)
+            sendInAppNotification(
+              reminder,
+              user.id,
+              bookmark.title,
+              bookmark.url
+            )
           );
           break;
-        
+
         default:
           console.warn(`Unknown notification channel: ${channel}`);
       }
     }
-    
+
     // Wait for all notifications to be sent
     await Promise.all(notificationPromises);
-    
+
     // Mark reminder as completed
     await reminderService.dismissReminder(reminder.id, reminder.ownerId);
-    
+
     console.log(`Reminder ${reminder.id} processed successfully`);
   } catch (error) {
     console.error(`Error processing reminder ${reminder.id}:`, error);
@@ -186,16 +207,15 @@ async function processReminderNotification(reminder: Reminder): Promise<void> {
  */
 async function processReminderJob(job: Job<ReminderJobData>) {
   const { reminderId } = job.data;
-  
+
   console.log(`Processing reminder job for reminder ${reminderId}`);
-  
+
   try {
     // Get reminder details
-    const result = await dbPool.query(
-      'SELECT * FROM reminders WHERE id = $1',
-      [reminderId]
-    );
-    
+    const result = await dbPool.query('SELECT * FROM reminders WHERE id = $1', [
+      reminderId,
+    ]);
+
     if (result.rows.length === 0) {
       console.warn(`Reminder ${reminderId} not found`);
       return {
@@ -204,7 +224,7 @@ async function processReminderJob(job: Job<ReminderJobData>) {
         message: 'Reminder not found',
       };
     }
-    
+
     const reminderRow = result.rows[0];
     const reminder: Reminder = {
       id: reminderRow.id,
@@ -215,7 +235,7 @@ async function processReminderJob(job: Job<ReminderJobData>) {
       completed: reminderRow.completed,
       createdAt: new Date(reminderRow.created_at),
     };
-    
+
     // Check if reminder is already completed
     if (reminder.completed) {
       console.log(`Reminder ${reminderId} is already completed`);
@@ -225,10 +245,10 @@ async function processReminderJob(job: Job<ReminderJobData>) {
         message: 'Reminder already completed',
       };
     }
-    
+
     // Process the reminder
     await processReminderNotification(reminder);
-    
+
     return {
       reminderId,
       status: 'completed',
@@ -246,11 +266,11 @@ async function processReminderJob(job: Job<ReminderJobData>) {
  */
 export async function pollDueReminders(): Promise<number> {
   console.log('Polling for due reminders...');
-  
+
   try {
     const dueReminders = await reminderService.getDueReminders();
     console.log(`Found ${dueReminders.length} due reminders`);
-    
+
     // Enqueue jobs for each due reminder
     for (const reminder of dueReminders) {
       // Add job to queue
@@ -258,7 +278,7 @@ export async function pollDueReminders(): Promise<number> {
       console.log(`Would enqueue reminder job for reminder ${reminder.id}`);
       // await reminderQueue.add('process-reminder', { reminderId: reminder.id });
     }
-    
+
     return dueReminders.length;
   } catch (error) {
     console.error('Error polling due reminders:', error);

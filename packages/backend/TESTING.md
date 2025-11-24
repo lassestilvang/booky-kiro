@@ -25,6 +25,7 @@ docker ps
 ```
 
 You should see containers for:
+
 - `bookmark-postgres` (PostgreSQL)
 - `bookmark-redis` (Redis)
 - `bookmark-meilisearch` (MeiliSearch)
@@ -75,6 +76,7 @@ Property-based tests use `fast-check` to generate random test data and verify th
 **Location:** `src/repositories/repository.property.test.ts`
 
 **Properties tested:**
+
 - Property 2: Bookmark Retrieval Completeness
 - Property 3: Bookmark Update Consistency
 - Property 4: Bookmark Deletion Cascade
@@ -90,6 +92,7 @@ Schema tests verify database schema correctness and data persistence.
 **Location:** `src/db/schema.test.ts`
 
 **Properties tested:**
+
 - Property 1: Bookmark Creation Completeness
 - Property 6: Collection Creation Completeness
 
@@ -121,7 +124,8 @@ npm run migrate
 
 **Problem:** Database connection is slow or services aren't ready.
 
-**Solution:** 
+**Solution:**
+
 1. Check that all Docker services are healthy: `docker ps`
 2. Increase test timeout in `vitest.config.ts` if needed
 3. Restart Docker services: `npm run docker:down && npm run docker:up`

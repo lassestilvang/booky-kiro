@@ -114,6 +114,7 @@ bookmark-manager-platform/
 - `npm run docker:logs` - View Docker logs
 
 **Backend-specific:**
+
 - `cd packages/backend && npm run migrate` - Run database migrations
 
 ### Testing

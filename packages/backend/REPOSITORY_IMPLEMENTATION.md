@@ -9,6 +9,7 @@ This document summarizes the implementation of Task 3: Core Data Models and Repo
 **Location:** `packages/shared/src/types/index.ts`
 
 **Implemented:**
+
 - Extended existing domain models (User, Collection, Bookmark, Tag, Highlight, File, Backup, CollectionPermission, Reminder)
 - Added comprehensive Request/Response DTOs for all API operations:
   - Authentication DTOs (RegisterRequest, LoginRequest, AuthResponse, RefreshTokenRequest)
@@ -32,7 +33,9 @@ This document summarizes the implementation of Task 3: Core Data Models and Repo
 **Implemented:**
 
 #### BaseRepository (`base.repository.ts`)
+
 Generic base repository providing common CRUD operations:
+
 - `findById(id)` - Find record by ID
 - `findAll(filters)` - Find all records with optional filtering
 - `create(data)` - Create new record
@@ -42,7 +45,9 @@ Generic base repository providing common CRUD operations:
 - `mapRow(row)` - Map database row to domain model (override in subclasses)
 
 #### UserRepository (`user.repository.ts`)
+
 User-specific operations with authentication support:
+
 - `findByEmail(email)` - Find user by email
 - `findByEmailWithPassword(email)` - Find user with password hash for authentication
 - `createWithPassword(email, passwordHash, name, plan)` - Create user with hashed password
@@ -51,7 +56,9 @@ User-specific operations with authentication support:
 - `getUserStats(userId)` - Get user statistics (bookmarks, collections, tags, highlights, storage)
 
 #### CollectionRepository (`collection.repository.ts`)
+
 Collection operations with hierarchy support:
+
 - `findByOwner(ownerId)` - Find all collections for a user
 - `findChildren(parentId)` - Find child collections
 - `findRootCollections(ownerId)` - Find root collections (no parent)
@@ -63,7 +70,9 @@ Collection operations with hierarchy support:
 - `countBookmarks(collectionId)` - Count bookmarks in collection
 
 #### BookmarkRepository (`bookmark.repository.ts`)
+
 Bookmark operations with filtering, pagination, and relations:
+
 - `findWithFilters(filters, pagination)` - Find bookmarks with complex filtering and pagination
 - `findByIdWithRelations(id)` - Find bookmark with tags and highlights
 - `getBookmarkTags(bookmarkId)` - Get tags for a bookmark
@@ -80,6 +89,7 @@ Bookmark operations with filtering, pagination, and relations:
 - `bulkDelete(bookmarkIds)` - Bulk delete bookmarks
 
 **Filtering support:**
+
 - Owner ID
 - Collection ID
 - Tags (with normalized matching)
@@ -90,13 +100,16 @@ Bookmark operations with filtering, pagination, and relations:
 - Broken link status
 
 **Pagination support:**
+
 - Page number
 - Limit per page
 - Sort by field
 - Sort order (asc/desc)
 
 #### TagRepository (`tag.repository.ts`)
+
 Tag operations with normalization:
+
 - `findByOwner(ownerId)` - Find all tags for a user
 - `findByNormalizedName(ownerId, name)` - Find tag by normalized name (case-insensitive)
 - `createTag(ownerId, name, color)` - Create tag with normalized name
@@ -108,6 +121,7 @@ Tag operations with normalization:
 - `getPopularTags(ownerId, limit)` - Get popular tags by usage
 
 **Tag normalization:**
+
 - Converts tag names to lowercase
 - Trims whitespace
 - Ensures case-insensitive matching
@@ -119,9 +133,11 @@ Tag operations with normalization:
 **Implemented Property Tests:**
 
 #### Property 2: Bookmark Retrieval Completeness
+
 **Validates:** Requirements 1.2
 
 Tests that retrieving a bookmark with tags and highlights returns all stored metadata including:
+
 - All bookmark fields (title, URL, type, domain, etc.)
 - Associated tags
 - Associated highlights
@@ -129,9 +145,11 @@ Tests that retrieving a bookmark with tags and highlights returns all stored met
 **Runs:** 100 iterations with random bookmark data and tag names
 
 #### Property 3: Bookmark Update Consistency
+
 **Validates:** Requirements 1.3
 
 Tests that updating a bookmark:
+
 - Modifies only the specified fields
 - Updates the modification timestamp
 - Preserves all other fields unchanged
@@ -139,9 +157,11 @@ Tests that updating a bookmark:
 **Runs:** 100 iterations with random initial data and new titles
 
 #### Property 4: Bookmark Deletion Cascade
+
 **Validates:** Requirements 1.4
 
 Tests that deleting a bookmark:
+
 - Removes the bookmark record
 - Cascades deletion to associated highlights
 - Preserves snapshot files (verified by checking deletion behavior)
@@ -149,9 +169,11 @@ Tests that deleting a bookmark:
 **Runs:** 100 iterations with random bookmark data
 
 #### Property 7: Bookmark Assignment
+
 **Validates:** Requirements 2.2
 
 Tests that assigning a bookmark to a collection:
+
 - Updates the collection reference immediately
 - Persists the change correctly
 - Reflects the change on retrieval
@@ -159,9 +181,11 @@ Tests that assigning a bookmark to a collection:
 **Runs:** 100 iterations with random bookmark and collection data
 
 #### Property 8: Bookmark Move Atomicity
+
 **Validates:** Requirements 2.3
 
 Tests that moving a bookmark between collections:
+
 - Updates the collection reference atomically
 - Has no intermediate states
 - Correctly reflects the new collection on retrieval
@@ -169,6 +193,7 @@ Tests that moving a bookmark between collections:
 **Runs:** 100 iterations with random bookmark and two collection data
 
 **Test Infrastructure:**
+
 - Uses `fast-check` for property-based testing
 - Generates random test data with arbitraries
 - Runs migrations automatically in `beforeAll`
@@ -180,6 +205,7 @@ Tests that moving a bookmark between collections:
 ### Prerequisites
 
 1. Start Docker services:
+
    ```bash
    npm run docker:up
    ```
@@ -204,22 +230,26 @@ See `TESTING.md` for detailed testing instructions and troubleshooting.
 ## Architecture Decisions
 
 ### Repository Pattern
+
 - Provides clean separation between data access and business logic
 - Base repository handles common CRUD operations
 - Specialized repositories extend base with domain-specific methods
 - All repositories use parameterized queries to prevent SQL injection
 
 ### Type Safety
+
 - All domain models defined in shared package
 - Request/Response DTOs provide clear API contracts
 - TypeScript strict mode ensures type safety across the stack
 
 ### Database Mapping
+
 - Repositories handle snake_case (database) to camelCase (TypeScript) conversion
 - Date fields automatically converted to JavaScript Date objects
 - Null handling for optional fields
 
 ### Testing Strategy
+
 - Property-based tests verify universal properties across all inputs
 - Each property test runs 100 iterations by default
 - Tests use real database for integration testing
@@ -228,6 +258,7 @@ See `TESTING.md` for detailed testing instructions and troubleshooting.
 ## Next Steps
 
 The repository layer is now complete and ready for:
+
 1. Authentication and authorization implementation (Task 4)
 2. API endpoint implementation (Tasks 5-8)
 3. Background worker integration (Tasks 12-15)

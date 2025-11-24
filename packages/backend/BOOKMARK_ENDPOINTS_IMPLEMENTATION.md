@@ -11,6 +11,7 @@ This document summarizes the implementation of bookmark management endpoints (Ta
 The BookmarkService provides business logic for bookmark operations:
 
 **Methods:**
+
 - `getUserBookmarks()` - Get all bookmarks for a user with optional filters and pagination
 - `getBookmarkById()` - Get a single bookmark by ID with tags and highlights
 - `createBookmark()` - Create a new bookmark with automatic duplicate detection
@@ -19,6 +20,7 @@ The BookmarkService provides business logic for bookmark operations:
 - `moveBookmark()` - Move bookmark to a different collection
 
 **Features:**
+
 - Automatic domain extraction from URLs
 - Duplicate detection on creation
 - Tag creation/retrieval with normalization
@@ -31,9 +33,11 @@ RESTful API endpoints for bookmark management:
 **Endpoints:**
 
 #### GET /v1/bookmarks
+
 List bookmarks with filtering and pagination
 
 **Query Parameters:**
+
 - `collectionId` - Filter by collection UUID
 - `tags` - Comma-separated tag names
 - `type` - Comma-separated bookmark types (article, video, image, file, document)
@@ -48,9 +52,12 @@ List bookmarks with filtering and pagination
 - `sortOrder` - Sort direction (asc/desc, default: desc)
 
 **Response:**
+
 ```json
 {
-  "data": [/* array of bookmarks */],
+  "data": [
+    /* array of bookmarks */
+  ],
   "total": 100,
   "page": 1,
   "limit": 50,
@@ -59,9 +66,11 @@ List bookmarks with filtering and pagination
 ```
 
 #### POST /v1/bookmarks
+
 Create a new bookmark
 
 **Request Body:**
+
 ```json
 {
   "url": "https://example.com",
@@ -75,28 +84,37 @@ Create a new bookmark
 ```
 
 **Response:**
+
 ```json
 {
   "id": "uuid",
   "status": "processing",
-  "bookmark": {/* bookmark with tags and highlights */}
+  "bookmark": {
+    /* bookmark with tags and highlights */
+  }
 }
 ```
 
 #### GET /v1/bookmarks/:id
+
 Get bookmark details with tags and highlights
 
 **Response:**
+
 ```json
 {
-  "bookmark": {/* bookmark with tags and highlights */}
+  "bookmark": {
+    /* bookmark with tags and highlights */
+  }
 }
 ```
 
 #### PUT /v1/bookmarks/:id
+
 Update bookmark
 
 **Request Body:**
+
 ```json
 {
   "title": "Updated Title",
@@ -109,13 +127,17 @@ Update bookmark
 ```
 
 **Response:**
+
 ```json
 {
-  "bookmark": {/* updated bookmark with tags and highlights */}
+  "bookmark": {
+    /* updated bookmark with tags and highlights */
+  }
 }
 ```
 
 #### DELETE /v1/bookmarks/:id
+
 Delete bookmark
 
 **Response:** 204 No Content
@@ -125,32 +147,38 @@ Delete bookmark
 Comprehensive property-based tests using fast-check:
 
 #### Property 5: Duplicate Detection
+
 **Validates:** Requirements 1.5
 
 Tests that creating a bookmark with an existing URL flags it as a duplicate.
 
 **Test Strategy:**
+
 - Generate random URLs and titles
 - Create first bookmark (should not be duplicate)
 - Create second bookmark with same URL (should be duplicate)
 - Verify isDuplicate flag is set correctly
 
 #### Property 11: Tag Filtering Accuracy
+
 **Validates:** Requirements 3.2
 
 Tests that filtering by tags returns only bookmarks with all specified tags.
 
 **Test Strategy:**
+
 - Generate bookmarks with various tag combinations
 - Filter by subset of tags
 - Verify all returned bookmarks contain all filter tags
 
 #### Property 12: Multi-Criteria Filtering
+
 **Validates:** Requirements 3.3
 
 Tests that filtering by multiple criteria (type, domain, date range) returns only matching bookmarks.
 
 **Test Strategy:**
+
 - Generate bookmarks with different types
 - Filter by specific type
 - Verify all returned bookmarks match the filter type
@@ -161,9 +189,11 @@ Tests that filtering by multiple criteria (type, domain, date range) returns onl
 Updated shared types to support null values for moving items to "uncategorized":
 
 **UpdateBookmarkRequest:**
+
 - `collectionId?: string | null` - Allows null to move to uncategorized
 
 **UpdateCollectionRequest:**
+
 - `parentId?: string | null` - Allows null to move to root level
 
 ## Integration
@@ -171,7 +201,11 @@ Updated shared types to support null values for moving items to "uncategorized":
 The bookmark routes are integrated into the main Express application in `src/index.ts`:
 
 ```typescript
-app.use('/v1/bookmarks', createAuthMiddleware(authService), createBookmarkRoutes(bookmarkService));
+app.use(
+  '/v1/bookmarks',
+  createAuthMiddleware(authService),
+  createBookmarkRoutes(bookmarkService)
+);
 ```
 
 All bookmark endpoints require authentication via JWT tokens.
@@ -179,11 +213,13 @@ All bookmark endpoints require authentication via JWT tokens.
 ## Testing
 
 ### Property-Based Tests
+
 - 100 iterations per property test
 - Tests cover duplicate detection and filtering accuracy
 - Tests require Docker services (PostgreSQL) to be running
 
 ### Running Tests
+
 ```bash
 # Start Docker services
 npm run docker:up
@@ -195,6 +231,7 @@ npm run test:run -- src/services/bookmark.service.property.test.ts
 ## Requirements Coverage
 
 ### Task 7.1: Create bookmark CRUD endpoints ✓
+
 - GET /v1/bookmarks - list bookmarks with filtering
 - POST /v1/bookmarks - create bookmark
 - GET /v1/bookmarks/:id - get bookmark details
@@ -203,16 +240,19 @@ npm run test:run -- src/services/bookmark.service.property.test.ts
 - **Requirements:** 1.1, 1.2, 1.3, 1.4
 
 ### Task 7.2: Write property test for duplicate detection ✓
+
 - Property 5: Duplicate Detection
 - **Validates:** Requirements 1.5
 
 ### Task 7.3: Implement bookmark filtering and pagination ✓
+
 - Query parameters for tags, type, domain, date range, collection
 - Pagination with page/limit parameters
 - Sorting with sortBy/sortOrder parameters
 - **Requirements:** 3.2, 3.3
 
 ### Task 7.4: Write property tests for filtering ✓
+
 - Property 11: Tag Filtering Accuracy
 - Property 12: Multi-Criteria Filtering
 - **Validates:** Requirements 3.2, 3.3
@@ -220,6 +260,7 @@ npm run test:run -- src/services/bookmark.service.property.test.ts
 ## Next Steps
 
 The following tasks are ready for implementation:
+
 - Task 8: Implement tag management endpoints
 - Task 9: Checkpoint - Ensure all tests pass
 - Task 10: Set up search engine infrastructure

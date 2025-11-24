@@ -25,12 +25,14 @@ The index worker processes content indexing jobs asynchronously. It performs the
 5. **Update Bookmark Status**: Marks the bookmark as indexed in the database
 
 **Key Features:**
+
 - Supports both HTML and PDF content extraction
 - Handles bookmark relations (tags, highlights) for comprehensive indexing
 - Includes error handling with automatic retry via BullMQ
 - Graceful shutdown support
 
 **Dependencies Added:**
+
 - `pdf-parse`: For extracting text from PDF files
 - `@types/pdf-parse`: TypeScript definitions
 
@@ -41,17 +43,21 @@ The index worker processes content indexing jobs asynchronously. It performs the
 Implemented property-based tests using fast-check to validate correctness properties:
 
 #### Property 23: Content Indexing Cleanliness
+
 **Validates:** Requirements 8.2
 
 Tests that indexed content does not contain script or style tags. The test generates random HTML with scripts, styles, and main content, then verifies:
+
 - Script tags and their content are removed
 - Style tags and their content are removed
 - Main content is preserved
 
 #### Property 26 & 48: PDF Text Extraction and Cleaning
+
 **Validates:** Requirements 8.5, 15.2
 
 Tests that extracted PDF text is properly cleaned and normalized. The test generates text with various noise patterns (excessive whitespace, line breaks, carriage returns) and verifies:
+
 - No excessive whitespace (no more than 1 space between words)
 - No excessive line breaks (no more than 2 consecutive)
 - No carriage returns
@@ -59,6 +65,7 @@ Tests that extracted PDF text is properly cleaned and normalized. The test gener
 - Original content is preserved (90%+ of words retained)
 
 #### Additional Properties Tested:
+
 1. **Text Extraction Preserves Structure**: Verifies that extracting text from HTML preserves logical content structure
 2. **Empty Content Handling**: Verifies that empty or whitespace-only content is cleaned to an empty string
 
@@ -77,6 +84,7 @@ The index worker integrates with:
 ## Configuration
 
 Environment variables used:
+
 - `MINIO_ENDPOINT`: MinIO server endpoint (default: localhost)
 - `MINIO_PORT`: MinIO server port (default: 9000)
 - `MINIO_USE_SSL`: Whether to use SSL (default: false)
@@ -93,6 +101,7 @@ Environment variables used:
 ## Testing
 
 Run the property tests:
+
 ```bash
 npm run test:run -- src/queue/workers/index.worker.property.test.ts
 ```
@@ -100,6 +109,7 @@ npm run test:run -- src/queue/workers/index.worker.property.test.ts
 ## Future Enhancements
 
 Potential improvements for future iterations:
+
 1. Support for additional file formats (EPUB, DOCX)
 2. Language detection and language-specific text processing
 3. Content summarization for long documents

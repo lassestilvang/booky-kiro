@@ -1,4 +1,11 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import {
+  describe,
+  test,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from 'vitest';
 import * as fc from 'fast-check';
 import { BookmarkRepository } from './bookmark.repository.js';
 import { CollectionRepository } from './collection.repository.js';
@@ -31,7 +38,7 @@ beforeAll(async () => {
     'Test User'
   );
   testUserId = testUser.id;
-  
+
   // Verify test user was created
   if (!testUserId) {
     throw new Error('Failed to create test user');
@@ -58,7 +65,9 @@ beforeEach(async () => {
 // ============================================================================
 
 const bookmarkArbitrary = fc.record({
-  title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+  title: fc
+    .string({ minLength: 1, maxLength: 100 })
+    .filter((s) => s.trim().length > 0),
   url: fc.webUrl(),
   excerpt: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
   type: fc.constantFrom('article', 'video', 'image', 'file', 'document'),
@@ -67,8 +76,15 @@ const bookmarkArbitrary = fc.record({
 });
 
 const collectionArbitrary = fc.record({
-  title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
-  icon: fc.option(fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0), { nil: undefined }),
+  title: fc
+    .string({ minLength: 1, maxLength: 100 })
+    .filter((s) => s.trim().length > 0),
+  icon: fc.option(
+    fc
+      .string({ minLength: 1, maxLength: 50 })
+      .filter((s) => s.trim().length > 0),
+    { nil: undefined }
+  ),
   isPublic: fc.boolean(),
   sortOrder: fc.integer({ min: 0, max: 1000 }),
 });
@@ -86,13 +102,16 @@ describe('Property 2: Bookmark Retrieval Completeness', () => {
     await fc.assert(
       fc.asyncProperty(
         bookmarkArbitrary,
-        fc.array(tagNameArbitrary.filter(s => s.trim().length > 0), { minLength: 1, maxLength: 5 }),
+        fc.array(
+          tagNameArbitrary.filter((s) => s.trim().length > 0),
+          { minLength: 1, maxLength: 5 }
+        ),
         async (bookmarkData, tagNames) => {
           // Ensure testUserId is set
           if (!testUserId) {
             throw new Error('testUserId is not set');
           }
-          
+
           // Create bookmark
           const bookmark = await bookmarkRepo.create({
             ownerId: testUserId,
@@ -115,7 +134,9 @@ describe('Property 2: Bookmark Retrieval Completeness', () => {
           );
 
           // Retrieve with relations
-          const retrieved = await bookmarkRepo.findByIdWithRelations(bookmark.id);
+          const retrieved = await bookmarkRepo.findByIdWithRelations(
+            bookmark.id
+          );
 
           // Verify all metadata is present
           expect(retrieved).not.toBeNull();
@@ -147,13 +168,15 @@ describe('Property 3: Bookmark Update Consistency', () => {
     await fc.assert(
       fc.asyncProperty(
         bookmarkArbitrary,
-        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
+        fc
+          .string({ minLength: 1, maxLength: 100 })
+          .filter((s) => s.trim().length > 0),
         async (initialData, newTitle) => {
           // Ensure testUserId is set
           if (!testUserId) {
             throw new Error('testUserId is not set');
           }
-          
+
           // Create bookmark
           const bookmark = await bookmarkRepo.create({
             ownerId: testUserId,
@@ -211,7 +234,7 @@ describe('Property 4: Bookmark Deletion Cascade', () => {
         if (!testUserId) {
           throw new Error('testUserId is not set');
         }
-        
+
         // Create bookmark
         const bookmark = await bookmarkRepo.create({
           ownerId: testUserId,
@@ -283,7 +306,7 @@ describe('Property 7: Bookmark Assignment', () => {
           if (!testUserId) {
             throw new Error('testUserId is not set');
           }
-          
+
           // Create collection
           const collection = await collectionRepo.create({
             ownerId: testUserId,
@@ -351,7 +374,7 @@ describe('Property 8: Bookmark Move Atomicity', () => {
           if (!testUserId) {
             throw new Error('testUserId is not set');
           }
-          
+
           // Create two collections
           const collection1 = await collectionRepo.create({
             ownerId: testUserId,

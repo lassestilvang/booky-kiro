@@ -35,7 +35,14 @@ export interface SearchQuery {
   fulltext?: boolean; // Enable content search (Pro)
   page?: number; // Pagination page (1-based)
   limit?: number; // Results per page
-  sort?: 'relevance' | 'created_at:desc' | 'created_at:asc' | 'updated_at:desc' | 'updated_at:asc' | 'title:asc' | 'title:desc';
+  sort?:
+    | 'relevance'
+    | 'created_at:desc'
+    | 'created_at:asc'
+    | 'updated_at:desc'
+    | 'updated_at:asc'
+    | 'title:asc'
+    | 'title:desc';
 }
 
 /**
@@ -92,7 +99,9 @@ export class SearchService {
   /**
    * Update a bookmark document
    */
-  async updateBookmark(document: Partial<BookmarkSearchDocument> & { id: string }): Promise<void> {
+  async updateBookmark(
+    document: Partial<BookmarkSearchDocument> & { id: string }
+  ): Promise<void> {
     try {
       await this.index.updateDocuments([document], { primaryKey: 'id' });
     } catch (error) {
@@ -173,8 +182,12 @@ export class SearchService {
 
     // Filter by date range
     if (query.dateFrom || query.dateTo) {
-      const from = query.dateFrom ? Math.floor(query.dateFrom.getTime() / 1000) : 0;
-      const to = query.dateTo ? Math.floor(query.dateTo.getTime() / 1000) : Math.floor(Date.now() / 1000);
+      const from = query.dateFrom
+        ? Math.floor(query.dateFrom.getTime() / 1000)
+        : 0;
+      const to = query.dateTo
+        ? Math.floor(query.dateTo.getTime() / 1000)
+        : Math.floor(Date.now() / 1000);
       filters.push(`created_at >= ${from} AND created_at <= ${to}`);
     }
 
@@ -185,7 +198,13 @@ export class SearchService {
    * Build search attributes based on query
    */
   private buildSearchAttributes(query: SearchQuery, isPro: boolean): string[] {
-    const attributes = ['title', 'excerpt', 'domain', 'tags', 'highlights_text'];
+    const attributes = [
+      'title',
+      'excerpt',
+      'domain',
+      'tags',
+      'highlights_text',
+    ];
 
     // Pro users can search in full content
     if (isPro && query.fulltext) {
@@ -198,7 +217,11 @@ export class SearchService {
   /**
    * Search bookmarks
    */
-  async search(query: SearchQuery, userId: string, isPro: boolean): Promise<SearchResponse> {
+  async search(
+    query: SearchQuery,
+    userId: string,
+    isPro: boolean
+  ): Promise<SearchResponse> {
     const startTime = Date.now();
 
     try {
@@ -235,10 +258,16 @@ export class SearchService {
           if (hit._formatted.title && hit._formatted.title !== hit.title) {
             highlights.push(hit._formatted.title);
           }
-          if (hit._formatted.excerpt && hit._formatted.excerpt !== hit.excerpt) {
+          if (
+            hit._formatted.excerpt &&
+            hit._formatted.excerpt !== hit.excerpt
+          ) {
             highlights.push(hit._formatted.excerpt);
           }
-          if (hit._formatted.content && hit._formatted.content !== hit.content) {
+          if (
+            hit._formatted.content &&
+            hit._formatted.content !== hit.content
+          ) {
             // Extract snippet from content
             const contentSnippet = this.extractSnippet(hit._formatted.content);
             if (contentSnippet) {
@@ -281,7 +310,10 @@ export class SearchService {
   /**
    * Extract a snippet from highlighted content
    */
-  private extractSnippet(content: string, maxLength: number = 200): string | null {
+  private extractSnippet(
+    content: string,
+    maxLength: number = 200
+  ): string | null {
     // Find the first <mark> tag
     const markIndex = content.indexOf('<mark>');
     if (markIndex === -1) return null;
@@ -301,7 +333,11 @@ export class SearchService {
   /**
    * Get search suggestions (autocomplete)
    */
-  async getSuggestions(query: string, userId: string, limit: number = 5): Promise<string[]> {
+  async getSuggestions(
+    query: string,
+    userId: string,
+    limit: number = 5
+  ): Promise<string[]> {
     try {
       const response = await this.index.search(query, {
         filter: `owner_id = "${userId}"`,
@@ -319,7 +355,10 @@ export class SearchService {
   /**
    * Get popular tags for a user
    */
-  async getPopularTags(userId: string, limit: number = 20): Promise<Array<{ tag: string; count: number }>> {
+  async getPopularTags(
+    userId: string,
+    limit: number = 20
+  ): Promise<Array<{ tag: string; count: number }>> {
     try {
       // MeiliSearch doesn't support aggregations, so we'll need to fetch and aggregate manually
       // This is a simplified implementation - in production, consider caching this

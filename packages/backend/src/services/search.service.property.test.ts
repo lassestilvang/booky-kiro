@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import * as fc from 'fast-check';
-import { SearchService, BookmarkSearchDocument, SearchQuery } from './search.service.js';
-import { searchClient, BOOKMARKS_INDEX, initializeSearchIndex } from '../db/search.config.js';
+import { SearchService } from './search.service.js';
+import { initializeSearchIndex } from '../db/search.config.js';
 
 describe('SearchService Property-Based Tests', () => {
   let searchService: SearchService;
@@ -34,10 +34,19 @@ describe('SearchService Property-Based Tests', () => {
   });
 
   // Arbitraries for generating test data
-  const bookmarkTypeArb = fc.constantFrom('article', 'video', 'image', 'file', 'document');
-  
-  const tagArb = fc.stringOf(fc.constantFrom('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'), { minLength: 3, maxLength: 10 });
-  
+  const bookmarkTypeArb = fc.constantFrom(
+    'article',
+    'video',
+    'image',
+    'file',
+    'document'
+  );
+
+  const tagArb = fc.stringOf(
+    fc.constantFrom('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'),
+    { minLength: 3, maxLength: 10 }
+  );
+
   const domainArb = fc.oneof(
     fc.constant('example.com'),
     fc.constant('test.org'),
@@ -52,19 +61,25 @@ describe('SearchService Property-Based Tests', () => {
     title: fc.string({ minLength: 5, maxLength: 100 }),
     url: fc.webUrl(),
     domain: domainArb,
-    excerpt: fc.option(fc.string({ minLength: 10, maxLength: 200 }), { nil: null }),
-    content: fc.option(fc.string({ minLength: 50, maxLength: 500 }), { nil: null }),
+    excerpt: fc.option(fc.string({ minLength: 10, maxLength: 200 }), {
+      nil: null,
+    }),
+    content: fc.option(fc.string({ minLength: 50, maxLength: 500 }), {
+      nil: null,
+    }),
     tags: fc.array(tagArb, { minLength: 0, maxLength: 5 }),
     type: bookmarkTypeArb,
     created_at: fc.integer({ min: 1600000000, max: 1700000000 }),
     updated_at: fc.integer({ min: 1600000000, max: 1700000000 }),
     has_snapshot: fc.boolean(),
-    highlights_text: fc.option(fc.string({ minLength: 10, maxLength: 100 }), { nil: null }),
+    highlights_text: fc.option(fc.string({ minLength: 10, maxLength: 100 }), {
+      nil: null,
+    }),
   });
 
   /**
    * Feature: bookmark-manager-platform, Property 22: Full-Text Search Coverage
-   * For any Pro user with indexed content containing specific terms, searching with full-text 
+   * For any Pro user with indexed content containing specific terms, searching with full-text
    * enabled should return bookmarks where those terms appear in the page content.
    * Validates: Requirements 8.1
    */
@@ -104,7 +119,9 @@ describe('SearchService Property-Based Tests', () => {
           expect(results.results.length).toBeGreaterThan(0);
 
           // The first bookmark should be in the results
-          const foundBookmark = results.results.find((r) => r.id === bookmarksWithTerm[0].id);
+          const foundBookmark = results.results.find(
+            (r) => r.id === bookmarksWithTerm[0].id
+          );
           expect(foundBookmark).toBeDefined();
         }
       ),
@@ -114,7 +131,7 @@ describe('SearchService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 24: Search Filter Combination
-   * For any search query with multiple filters (tags, type, domain, date range, collection), 
+   * For any search query with multiple filters (tags, type, domain, date range, collection),
    * the results should match all specified filter criteria simultaneously.
    * Validates: Requirements 8.3
    */
@@ -163,7 +180,9 @@ describe('SearchService Property-Based Tests', () => {
           });
 
           // The matching bookmark should be in results
-          const found = results.results.find((r) => r.id === matchingBookmark.id);
+          const found = results.results.find(
+            (r) => r.id === matchingBookmark.id
+          );
           expect(found).toBeDefined();
         }
       ),
@@ -173,7 +192,7 @@ describe('SearchService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 25: Search Matching Modes
-   * For any search query, the search engine should support both exact phrase matching 
+   * For any search query, the search engine should support both exact phrase matching
    * (for quoted terms) and fuzzy matching (for misspelled terms).
    * Validates: Requirements 8.4
    */
@@ -246,7 +265,12 @@ describe('SearchService Property-Based Tests', () => {
             excerpt: `This excerpt mentions ${searchTerm}`,
           };
 
-          const allBookmarks = [highRelevance, mediumRelevance, lowRelevance, ...bookmarks.slice(3)];
+          const allBookmarks = [
+            highRelevance,
+            mediumRelevance,
+            lowRelevance,
+            ...bookmarks.slice(3),
+          ];
 
           // Index all bookmarks
           for (const bookmark of allBookmarks) {
@@ -271,7 +295,9 @@ describe('SearchService Property-Based Tests', () => {
 
             // Scores should be in descending order (higher relevance first)
             for (let i = 0; i < results.results.length - 1; i++) {
-              expect(results.results[i].score).toBeGreaterThanOrEqual(results.results[i + 1].score);
+              expect(results.results[i].score).toBeGreaterThanOrEqual(
+                results.results[i + 1].score
+              );
             }
           }
         }
@@ -282,7 +308,7 @@ describe('SearchService Property-Based Tests', () => {
 
   /**
    * Feature: bookmark-manager-platform, Property 57: Fuzzy Search Matching
-   * For any search query with misspelled terms, the search engine should return results 
+   * For any search query with misspelled terms, the search engine should return results
    * using fuzzy matching with configurable edit distance.
    * Validates: Requirements 17.4
    */
@@ -293,10 +319,12 @@ describe('SearchService Property-Based Tests', () => {
         async (bookmarks) => {
           // Create bookmarks with specific words
           const words = ['programming', 'development', 'technology'];
-          const bookmarksWithWords = bookmarks.slice(0, 3).map((bookmark, index) => ({
-            ...bookmark,
-            title: `Article about ${words[index]}`,
-          }));
+          const bookmarksWithWords = bookmarks
+            .slice(0, 3)
+            .map((bookmark, index) => ({
+              ...bookmark,
+              title: `Article about ${words[index]}`,
+            }));
 
           // Index bookmarks
           for (const bookmark of bookmarksWithWords) {
@@ -401,11 +429,7 @@ describe('SearchService Property-Based Tests', () => {
 
     // Search for bookmarks from last 30 days
     const dateFrom = new Date(now - 30 * 24 * 60 * 60 * 1000);
-    const results = await searchService.search(
-      { dateFrom },
-      testUserId,
-      false
-    );
+    const results = await searchService.search({ dateFrom }, testUserId, false);
 
     // Should only return the new bookmark
     expect(results.results.length).toBe(1);
@@ -416,24 +440,27 @@ describe('SearchService Property-Based Tests', () => {
     // Clean up any existing bookmarks first
     await searchService.deleteUserBookmarks(testUserId);
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    
+
     // Create 25 bookmarks
-    const bookmarks: BookmarkSearchDocument[] = Array.from({ length: 25 }, (_, i) => ({
-      id: `bookmark-pagination-${Date.now()}-${i}`,
-      owner_id: testUserId,
-      collection_id: null,
-      title: `Bookmark ${i}`,
-      url: `https://example.com/${i}`,
-      domain: 'example.com',
-      excerpt: `Content ${i}`,
-      content: null,
-      tags: [],
-      type: 'article' as const,
-      created_at: Math.floor(Date.now() / 1000),
-      updated_at: Math.floor(Date.now() / 1000),
-      has_snapshot: false,
-      highlights_text: null,
-    }));
+    const bookmarks: BookmarkSearchDocument[] = Array.from(
+      { length: 25 },
+      (_, i) => ({
+        id: `bookmark-pagination-${Date.now()}-${i}`,
+        owner_id: testUserId,
+        collection_id: null,
+        title: `Bookmark ${i}`,
+        url: `https://example.com/${i}`,
+        domain: 'example.com',
+        excerpt: `Content ${i}`,
+        content: null,
+        tags: [],
+        type: 'article' as const,
+        created_at: Math.floor(Date.now() / 1000),
+        updated_at: Math.floor(Date.now() / 1000),
+        has_snapshot: false,
+        highlights_text: null,
+      })
+    );
 
     for (const bookmark of bookmarks) {
       await searchService.indexBookmark(bookmark);
@@ -465,7 +492,9 @@ describe('SearchService Property-Based Tests', () => {
     // Pages should have different results
     const page1Ids = new Set(page1.results.map((r) => r.id));
     const page2Ids = new Set(page2.results.map((r) => r.id));
-    const intersection = new Set([...page1Ids].filter((id) => page2Ids.has(id)));
+    const intersection = new Set(
+      [...page1Ids].filter((id) => page2Ids.has(id))
+    );
     expect(intersection.size).toBe(0);
   });
 });

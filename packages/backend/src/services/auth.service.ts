@@ -143,11 +143,9 @@ export class AuthService {
    */
   async refreshAccessToken(refreshToken: string): Promise<string> {
     try {
-      const payload = jwt.verify(
-        refreshToken,
-        this.jwtRefreshPublicKey,
-        { algorithms: ['RS256'] }
-      ) as JWTPayload;
+      const payload = jwt.verify(refreshToken, this.jwtRefreshPublicKey, {
+        algorithms: ['RS256'],
+      }) as JWTPayload;
 
       if (payload.type !== 'refresh') {
         throw new Error('Invalid token type');

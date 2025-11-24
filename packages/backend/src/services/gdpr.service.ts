@@ -4,9 +4,6 @@ import { BookmarkRepository } from '../repositories/bookmark.repository.js';
 import { CollectionRepository } from '../repositories/collection.repository.js';
 import { TagRepository } from '../repositories/tag.repository.js';
 import { HighlightRepository } from '../repositories/highlight.repository.js';
-import { FileRepository } from '../repositories/file.repository.js';
-import { BackupRepository } from '../repositories/backup.repository.js';
-import { ReminderRepository } from '../repositories/reminder.repository.js';
 
 /**
  * Complete user data export for GDPR compliance

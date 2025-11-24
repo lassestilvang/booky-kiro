@@ -64,15 +64,29 @@ export class StorageClient {
   /**
    * Get a presigned URL for file upload
    */
-  async getPresignedUploadUrl(path: string, expirySeconds: number = 3600): Promise<string> {
-    return await this.client.presignedPutObject(this.bucket, path, expirySeconds);
+  async getPresignedUploadUrl(
+    path: string,
+    expirySeconds: number = 3600
+  ): Promise<string> {
+    return await this.client.presignedPutObject(
+      this.bucket,
+      path,
+      expirySeconds
+    );
   }
 
   /**
    * Get a presigned URL for file download
    */
-  async getPresignedDownloadUrl(path: string, expirySeconds: number = 3600): Promise<string> {
-    return await this.client.presignedGetObject(this.bucket, path, expirySeconds);
+  async getPresignedDownloadUrl(
+    path: string,
+    expirySeconds: number = 3600
+  ): Promise<string> {
+    return await this.client.presignedGetObject(
+      this.bucket,
+      path,
+      expirySeconds
+    );
   }
 
   /**
@@ -90,7 +104,9 @@ export class StorageClient {
   /**
    * Get file metadata
    */
-  async getFileMetadata(path: string): Promise<{ size: number; etag: string; lastModified: Date }> {
+  async getFileMetadata(
+    path: string
+  ): Promise<{ size: number; etag: string; lastModified: Date }> {
     const stat = await this.client.statObject(this.bucket, path);
     return {
       size: stat.size,

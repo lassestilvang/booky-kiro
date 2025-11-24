@@ -34,14 +34,17 @@ Implemented a comprehensive job queue infrastructure using BullMQ and Redis for 
 ### Worker Implementations
 
 #### Snapshot Worker (`src/queue/workers/snapshot.worker.ts`)
+
 - Placeholder for task 13.1
 - Will handle page fetching, content extraction, thumbnail generation, and S3 storage
 
 #### Index Worker (`src/queue/workers/index.worker.ts`)
+
 - Placeholder for task 14.1
 - Will handle text extraction from HTML/PDF and search engine indexing
 
 #### Maintenance Worker (`src/queue/workers/maintenance.worker.ts`)
+
 - Placeholder for tasks 15.1 and 15.3
 - Will handle duplicate detection and broken link scanning
 
@@ -58,21 +61,25 @@ Implemented a comprehensive job queue infrastructure using BullMQ and Redis for 
 Implemented comprehensive property-based tests validating:
 
 ### Property 59: Job Enqueueing
+
 - **Validates**: Requirements 18.1
 - **Test**: For any bookmark data, enqueuing a job creates it in the queue with correct data
 - **Status**: ✅ Passing
 
 ### Property 61: Job Retry with Backoff
+
 - **Validates**: Requirements 18.3
 - **Test**: For any job, retry configuration includes 3 attempts with exponential backoff
 - **Status**: ✅ Passing
 
 ### Property 62: Job Priority Processing
+
 - **Validates**: Requirements 18.4
 - **Test**: For any set of jobs with priorities, jobs are created with correct priority values
 - **Status**: ✅ Passing
 
 ### Additional Tests
+
 - All queue types can enqueue jobs correctly
 - Duplicate job IDs prevent duplicate jobs from being enqueued
 
@@ -92,6 +99,7 @@ Implemented comprehensive property-based tests validating:
 ## Next Steps
 
 The following tasks will implement the actual worker logic:
+
 - Task 13.1: Implement snapshot worker
 - Task 14.1: Implement index worker
 - Task 15.1: Implement duplicate detection
@@ -121,6 +129,7 @@ console.log(`Waiting: ${stats.waiting}, Active: ${stats.active}`);
 ## Testing
 
 Run property-based tests:
+
 ```bash
 npm run test:run -- src/queue/queue.property.test.ts
 ```

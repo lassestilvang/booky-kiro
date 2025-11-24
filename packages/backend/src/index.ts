@@ -37,8 +37,6 @@ import { BookmarkRepository } from './repositories/bookmark.repository.js';
 import { TagRepository } from './repositories/tag.repository.js';
 import { HighlightRepository } from './repositories/highlight.repository.js';
 import { FileRepository } from './repositories/file.repository.js';
-import { ReminderRepository } from './repositories/reminder.repository.js';
-import { BackupRepository } from './repositories/backup.repository.js';
 import { CollectionPermissionRepository } from './repositories/permission.repository.js';
 import { getStorageClient } from './utils/storage.js';
 import { indexQueue } from './queue/config.js';
@@ -123,7 +121,11 @@ const collectionService = new CollectionService(
   bookmarkRepository,
   permissionRepository
 );
-const bookmarkService = new BookmarkService(bookmarkRepository, tagRepository);
+const bookmarkService = new BookmarkService(
+  bookmarkRepository,
+  tagRepository,
+  storageClient
+);
 const tagService = new TagService(tagRepository);
 const searchService = new SearchService();
 const highlightService = new HighlightService(
@@ -268,12 +270,7 @@ async function startServer() {
     });
 
     // Initialize WebSocket sync handler
-    const syncHandler = new SyncWebSocketHandler(
-      wss,
-      pool,
-      redisPubSub,
-      accessKeyPair.publicKey
-    );
+    new SyncWebSocketHandler(wss, pool, redisPubSub, accessKeyPair.publicKey);
     console.log('WebSocket sync handler initialized');
 
     // Start HTTP server

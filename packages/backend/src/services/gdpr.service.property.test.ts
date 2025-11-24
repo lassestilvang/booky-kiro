@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import * as fc from 'fast-check';
 import { Pool } from 'pg';
 import { GDPRService } from './gdpr.service.js';

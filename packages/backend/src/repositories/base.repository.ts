@@ -4,7 +4,7 @@ import { Pool } from 'pg';
  * Convert camelCase to snake_case
  */
 function toSnakeCase(str: string): string {
-  return str.replace(/[A-Z]/g, (letter, index) => 
+  return str.replace(/[A-Z]/g, (letter, index) =>
     index === 0 ? letter.toLowerCase() : `_${letter.toLowerCase()}`
   );
 }

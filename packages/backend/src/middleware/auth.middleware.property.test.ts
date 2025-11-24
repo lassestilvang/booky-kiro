@@ -1,4 +1,11 @@
-import { describe, test, beforeAll, afterAll, beforeEach, expect } from 'vitest';
+import {
+  describe,
+  test,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  expect,
+} from 'vitest';
 import * as fc from 'fast-check';
 import { AuthService } from '../services/auth.service.js';
 import { UserRepository } from '../repositories/user.repository.js';
@@ -89,7 +96,7 @@ describe('Authorization Middleware Property-Based Tests', () => {
 
           const res = {
             status: (code: number) => ({
-              json: (data: any) => {
+              json: (_data: any) => {
                 throw new Error(`Unexpected response: ${code}`);
               },
             }),

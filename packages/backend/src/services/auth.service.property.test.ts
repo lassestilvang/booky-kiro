@@ -15,19 +15,21 @@ describe('AuthService Property-Based Tests', () => {
     await runMigrations();
 
     userRepository = new UserRepository(pool);
-    
+
     // Generate test RSA keys
     const crypto = await import('crypto');
-    const { privateKey: accessPrivate, publicKey: accessPublic } = crypto.generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-      publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-    });
-    const { privateKey: refreshPrivate, publicKey: refreshPublic } = crypto.generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-      publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-    });
+    const { privateKey: accessPrivate, publicKey: accessPublic } =
+      crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+    const { privateKey: refreshPrivate, publicKey: refreshPublic } =
+      crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
 
     authService = new AuthService(
       userRepository,
@@ -54,9 +56,7 @@ describe('AuthService Property-Based Tests', () => {
       fc.asyncProperty(
         // Generate valid user registration data
         fc.record({
-          email: fc
-            .emailAddress()
-            .filter((email) => email.length <= 255),
+          email: fc.emailAddress().filter((email) => email.length <= 255),
           password: fc
             .string({ minLength: 8, maxLength: 50 })
             .filter(
@@ -79,8 +79,9 @@ describe('AuthService Property-Based Tests', () => {
           expect(user.updatedAt).toBeInstanceOf(Date);
 
           // Verify password is hashed (not stored in plain text)
-          const userWithPassword =
-            await userRepository.findByEmailWithPassword(userData.email);
+          const userWithPassword = await userRepository.findByEmailWithPassword(
+            userData.email
+          );
           expect(userWithPassword).toBeDefined();
           expect(userWithPassword!.passwordHash).toBeDefined();
           expect(userWithPassword!.passwordHash).not.toBe(userData.password);
@@ -132,7 +133,9 @@ describe('AuthService Property-Based Tests', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          email: fc.string().filter((s) => !s.includes('@') || !s.includes('.')),
+          email: fc
+            .string()
+            .filter((s) => !s.includes('@') || !s.includes('.')),
           password: fc
             .string({ minLength: 8, maxLength: 50 })
             .filter(
@@ -259,7 +262,7 @@ describe('AuthService Property-Based Tests', () => {
           });
 
           // Wait 1 second to ensure different iat timestamp
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
 
           // Use refresh token to get new access token
           const newAccessToken = await authService.refreshAccessToken(

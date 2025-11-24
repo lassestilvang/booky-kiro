@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import * as fc from 'fast-check';
 import { Pool } from 'pg';
 import { BackupService } from './backup.service.js';
@@ -12,8 +12,6 @@ import { FileRepository } from '../repositories/file.repository.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import archiver from 'archiver';
-import { Readable } from 'stream';
 
 describe('BackupService Property-Based Tests', () => {
   let pool: Pool;
@@ -129,7 +127,8 @@ describe('BackupService Property-Based Tests', () => {
           for (let i = 0; i < userData.bookmarksCount; i++) {
             const bookmark = await bookmarkRepository.create({
               ownerId: user.id,
-              collectionId: collections.length > 0 ? collections[0].id : undefined,
+              collectionId:
+                collections.length > 0 ? collections[0].id : undefined,
               title: `Bookmark ${i}`,
               url: `https://example.com/page${i}`,
               excerpt: `Excerpt ${i}`,
@@ -144,7 +143,8 @@ describe('BackupService Property-Based Tests', () => {
 
           // Create highlights (only if we have bookmarks)
           const highlights = [];
-          const actualHighlightsCount = bookmarks.length > 0 ? userData.highlightsCount : 0;
+          const actualHighlightsCount =
+            bookmarks.length > 0 ? userData.highlightsCount : 0;
           if (bookmarks.length > 0) {
             for (let i = 0; i < actualHighlightsCount; i++) {
               const highlight = await highlightRepository.create({
@@ -168,7 +168,10 @@ describe('BackupService Property-Based Tests', () => {
           expect(backup.sizeBytes).toBeGreaterThan(0);
 
           // Read and parse backup file
-          const backupStream = await backupService.getBackupStream(backup.id, user.id);
+          const backupStream = await backupService.getBackupStream(
+            backup.id,
+            user.id
+          );
           const chunks: Buffer[] = [];
           for await (const chunk of backupStream) {
             chunks.push(Buffer.from(chunk));
@@ -184,11 +187,15 @@ describe('BackupService Property-Based Tests', () => {
           const zipEntries = zip.getEntries();
 
           // Verify backup.json exists
-          const backupJsonEntry = zipEntries.find((e) => e.entryName === 'backup.json');
+          const backupJsonEntry = zipEntries.find(
+            (e) => e.entryName === 'backup.json'
+          );
           expect(backupJsonEntry).toBeDefined();
 
           if (backupJsonEntry) {
-            const backupData = JSON.parse(backupJsonEntry.getData().toString('utf8'));
+            const backupData = JSON.parse(
+              backupJsonEntry.getData().toString('utf8')
+            );
 
             // Verify user data
             expect(backupData.user.id).toBe(user.id);
@@ -197,7 +204,9 @@ describe('BackupService Property-Based Tests', () => {
             expect(backupData.user.plan).toBe(user.plan);
 
             // Verify collections
-            expect(backupData.collections).toHaveLength(userData.collectionsCount);
+            expect(backupData.collections).toHaveLength(
+              userData.collectionsCount
+            );
             for (const collection of backupData.collections) {
               expect(collection.id).toBeDefined();
               expect(collection.title).toBeDefined();
@@ -212,7 +221,8 @@ describe('BackupService Property-Based Tests', () => {
             }
 
             // Verify highlights (only if we had bookmarks)
-            const expectedHighlightsCount = bookmarks.length > 0 ? userData.highlightsCount : 0;
+            const expectedHighlightsCount =
+              bookmarks.length > 0 ? userData.highlightsCount : 0;
             expect(backupData.highlights).toHaveLength(expectedHighlightsCount);
             for (const highlight of backupData.highlights) {
               expect(highlight.id).toBeDefined();
@@ -274,7 +284,10 @@ describe('BackupService Property-Based Tests', () => {
           const backup = await backupService.generateBackup(user.id, false);
 
           // Get backup stream
-          const backupStream = await backupService.getBackupStream(backup.id, user.id);
+          const backupStream = await backupService.getBackupStream(
+            backup.id,
+            user.id
+          );
           const chunks: Buffer[] = [];
           for await (const chunk of backupStream) {
             chunks.push(Buffer.from(chunk));
@@ -294,7 +307,9 @@ describe('BackupService Property-Based Tests', () => {
           expect(zipEntries.length).toBeGreaterThan(0);
 
           // Verify backup.json exists and is valid JSON
-          const backupJsonEntry = zipEntries.find((e: any) => e.entryName === 'backup.json');
+          const backupJsonEntry = zipEntries.find(
+            (e: any) => e.entryName === 'backup.json'
+          );
           expect(backupJsonEntry).toBeDefined();
 
           if (backupJsonEntry) {
@@ -386,9 +401,9 @@ describe('BackupService Property-Based Tests', () => {
           for (let i = 0; i < userData.backupsToCreate; i++) {
             const backup = await backupService.generateBackup(user.id, true);
             createdBackups.push(backup);
-            
+
             // Small delay to ensure different timestamps
-            await new Promise(resolve => setTimeout(resolve, 10));
+            await new Promise((resolve) => setTimeout(resolve, 10));
           }
 
           // Get all backups for user
@@ -398,16 +413,19 @@ describe('BackupService Property-Based Tests', () => {
           expect(remainingBackups.length).toBeLessThanOrEqual(30);
 
           // Verify the most recent backups are kept
-          const remainingIds = remainingBackups.map(b => b.id);
+          const remainingIds = remainingBackups.map((b) => b.id);
           const mostRecentBackups = createdBackups.slice(-30);
-          
+
           for (const recentBackup of mostRecentBackups) {
             expect(remainingIds).toContain(recentBackup.id);
           }
 
           // Verify older backups are removed
           if (userData.backupsToCreate > 30) {
-            const oldestBackups = createdBackups.slice(0, userData.backupsToCreate - 30);
+            const oldestBackups = createdBackups.slice(
+              0,
+              userData.backupsToCreate - 30
+            );
             for (const oldBackup of oldestBackups) {
               expect(remainingIds).not.toContain(oldBackup.id);
             }

@@ -20,99 +20,104 @@ export function createFileRoutes(fileService: FileService): Router {
    * POST /files/upload
    * Upload a file
    */
-  router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
-    try {
-      if (!req.user) {
-        res.status(401).json({
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Authentication required',
-            timestamp: new Date().toISOString(),
-            requestId: req.headers['x-request-id'] || 'unknown',
-          },
+  router.post(
+    '/upload',
+    upload.single('file'),
+    async (req: Request, res: Response) => {
+      try {
+        if (!req.user) {
+          res.status(401).json({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Authentication required',
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+          return;
+        }
+
+        // Check Pro tier
+        if (req.user.plan !== 'pro') {
+          res.status(403).json({
+            error: {
+              code: 'PRO_FEATURE_REQUIRED',
+              message:
+                'File uploads are a Pro feature. Please upgrade your plan.',
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+          return;
+        }
+
+        if (!req.file) {
+          res.status(400).json({
+            error: {
+              code: 'NO_FILE',
+              message: 'No file provided',
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+          return;
+        }
+
+        // Get optional bookmark ID from body
+        const bookmarkId = req.body.bookmarkId;
+
+        // Upload file
+        const file = await fileService.uploadFile(
+          req.user.userId,
+          req.user.plan,
+          req.file.originalname,
+          req.file.mimetype,
+          req.file.buffer,
+          bookmarkId
+        );
+
+        res.status(201).json({
+          file,
         });
-        return;
-      }
+      } catch (error) {
+        if (error instanceof Error) {
+          const statusCode =
+            error.message === 'File uploads are a Pro feature'
+              ? 403
+              : error.message.includes('exceeds limit')
+                ? 413
+                : error.message === 'Invalid bookmark'
+                  ? 400
+                  : 500;
 
-      // Check Pro tier
-      if (req.user.plan !== 'pro') {
-        res.status(403).json({
-          error: {
-            code: 'PRO_FEATURE_REQUIRED',
-            message: 'File uploads are a Pro feature. Please upgrade your plan.',
-            timestamp: new Date().toISOString(),
-            requestId: req.headers['x-request-id'] || 'unknown',
-          },
-        });
-        return;
-      }
-
-      if (!req.file) {
-        res.status(400).json({
-          error: {
-            code: 'NO_FILE',
-            message: 'No file provided',
-            timestamp: new Date().toISOString(),
-            requestId: req.headers['x-request-id'] || 'unknown',
-          },
-        });
-        return;
-      }
-
-      // Get optional bookmark ID from body
-      const bookmarkId = req.body.bookmarkId;
-
-      // Upload file
-      const file = await fileService.uploadFile(
-        req.user.userId,
-        req.user.plan,
-        req.file.originalname,
-        req.file.mimetype,
-        req.file.buffer,
-        bookmarkId
-      );
-
-      res.status(201).json({
-        file,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        const statusCode =
-          error.message === 'File uploads are a Pro feature'
-            ? 403
-            : error.message.includes('exceeds limit')
-              ? 413
-              : error.message === 'Invalid bookmark'
-                ? 400
-                : 500;
-
-        res.status(statusCode).json({
-          error: {
-            code:
-              statusCode === 403
-                ? 'PRO_FEATURE_REQUIRED'
-                : statusCode === 413
-                  ? 'FILE_TOO_LARGE'
-                  : statusCode === 400
-                    ? 'INVALID_BOOKMARK'
-                    : 'UPLOAD_FAILED',
-            message: error.message,
-            timestamp: new Date().toISOString(),
-            requestId: req.headers['x-request-id'] || 'unknown',
-          },
-        });
-      } else {
-        res.status(500).json({
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'An unexpected error occurred',
-            timestamp: new Date().toISOString(),
-            requestId: req.headers['x-request-id'] || 'unknown',
-          },
-        });
+          res.status(statusCode).json({
+            error: {
+              code:
+                statusCode === 403
+                  ? 'PRO_FEATURE_REQUIRED'
+                  : statusCode === 413
+                    ? 'FILE_TOO_LARGE'
+                    : statusCode === 400
+                      ? 'INVALID_BOOKMARK'
+                      : 'UPLOAD_FAILED',
+              message: error.message,
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+        } else {
+          res.status(500).json({
+            error: {
+              code: 'INTERNAL_ERROR',
+              message: 'An unexpected error occurred',
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+        }
       }
     }
-  });
+  );
 
   /**
    * GET /files/:id
@@ -136,10 +141,16 @@ export function createFileRoutes(fileService: FileService): Router {
 
       if (download) {
         // Stream file for download
-        const { stream, file } = await fileService.getFileStream(req.params.id, req.user.userId);
+        const { stream, file } = await fileService.getFileStream(
+          req.params.id,
+          req.user.userId
+        );
 
         res.setHeader('Content-Type', file.mimeType);
-        res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${file.filename}"`
+        );
         res.setHeader('Content-Length', file.sizeBytes.toString());
 
         stream.pipe(res);
@@ -263,7 +274,11 @@ export function createFileRoutes(fileService: FileService): Router {
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 50;
 
-      const files = await fileService.listUserFiles(req.user.userId, page, limit);
+      const files = await fileService.listUserFiles(
+        req.user.userId,
+        page,
+        limit
+      );
 
       res.status(200).json({
         files,
