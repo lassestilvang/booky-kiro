@@ -102,6 +102,33 @@ export class FileRepository {
   }
 
   /**
+   * Find all files by user ID (for backups)
+   */
+  async findByUserId(userId: string): Promise<File[]> {
+    const query = `
+      SELECT 
+        id, 
+        owner_id as "ownerId", 
+        bookmark_id as "bookmarkId",
+        filename, 
+        mime_type as "mimeType", 
+        size_bytes as "sizeBytes", 
+        s3_path as "s3Path",
+        created_at as "createdAt"
+      FROM files
+      WHERE owner_id = $1
+      ORDER BY created_at DESC
+    `;
+
+    const result = await this.pool.query(query, [userId]);
+    // Convert sizeBytes to number for all rows
+    return result.rows.map(row => ({
+      ...row,
+      sizeBytes: parseInt(row.sizeBytes, 10),
+    }));
+  }
+
+  /**
    * Find files by bookmark
    */
   async findByBookmark(bookmarkId: string): Promise<File[]> {

@@ -13,6 +13,7 @@ export interface User {
   email: string;
   name: string;
   plan: PlanTier;
+  preferences?: UserPreferences;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -143,6 +144,12 @@ export interface RefreshTokenRequest {
 export interface UpdateUserRequest {
   name?: string;
   email?: string;
+  preferences?: UserPreferences;
+}
+
+export interface UserPreferences {
+  viewMode?: 'grid' | 'headlines' | 'masonry' | 'list';
+  theme?: 'light' | 'dark';
 }
 
 export interface UserStatsResponse {
@@ -151,6 +158,16 @@ export interface UserStatsResponse {
   totalTags: number;
   totalHighlights: number;
   storageUsedBytes: number;
+}
+
+export interface ChangePlanRequest {
+  plan: PlanTier;
+}
+
+export interface ChangePlanResponse {
+  user: User;
+  backupTriggered: boolean;
+  retentionApplied: boolean;
 }
 
 // Collection DTOs
@@ -317,6 +334,13 @@ export interface BulkActionResponse {
   }>;
 }
 
+export interface UpdateCustomOrderRequest {
+  updates: Array<{
+    id: string;
+    order: number;
+  }>;
+}
+
 // Import/Export DTOs
 export interface ImportHtmlRequest {
   html: string;
@@ -373,4 +397,65 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+// Sync DTOs
+export type SyncEntityType =
+  | 'bookmark'
+  | 'collection'
+  | 'tag'
+  | 'highlight'
+  | 'reminder';
+export type SyncAction = 'create' | 'update' | 'delete';
+
+export interface SyncEntity {
+  id: string;
+  type: SyncEntityType;
+  action: SyncAction;
+  data: any;
+  timestamp: Date;
+  userId: string;
+}
+
+export interface SyncRequest {
+  lastSyncTimestamp?: Date;
+  deviceId: string;
+}
+
+export interface SyncResponse {
+  changes: SyncEntity[];
+  timestamp: Date;
+  hasMore: boolean;
+}
+
+export interface ConflictResolution {
+  entityId: string;
+  entityType: string;
+  localTimestamp: Date;
+  remoteTimestamp: Date;
+  resolution: 'local' | 'remote';
+}
+
+export interface ApplySyncRequest {
+  changes: SyncEntity[];
+  deviceId: string;
+}
+
+export interface ApplySyncResponse {
+  success: boolean;
+  conflicts: ConflictResolution[];
+  timestamp: Date;
+}
+
+export interface OfflineSyncRequest {
+  offlineChanges: SyncEntity[];
+  lastSyncTimestamp?: Date;
+  deviceId: string;
+}
+
+export interface OfflineSyncResponse {
+  success: boolean;
+  serverChanges: SyncEntity[];
+  conflicts: ConflictResolution[];
+  timestamp: Date;
 }

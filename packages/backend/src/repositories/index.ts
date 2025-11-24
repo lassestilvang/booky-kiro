@@ -5,3 +5,6 @@ export { BookmarkRepository } from './bookmark.repository.js';
 export { TagRepository } from './tag.repository.js';
 export { HighlightRepository } from './highlight.repository.js';
 export { FileRepository } from './file.repository.js';
+export { BackupRepository } from './backup.repository.js';
+export { CollectionPermissionRepository } from './permission.repository.js';
+export { ReminderRepository } from './reminder.repository.js';

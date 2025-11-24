@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { UserService } from '../services/user.service.js';
+import { PlanService } from '../services/plan.service.js';
 import { z } from 'zod';
 
 // Validation schemas
@@ -8,10 +9,17 @@ const updateProfileSchema = z.object({
   email: z.string().email().optional(),
 });
 
+const changePlanSchema = z.object({
+  plan: z.enum(['free', 'pro']),
+});
+
 /**
  * Create user management routes
  */
-export function createUserRoutes(userService: UserService): Router {
+export function createUserRoutes(
+  userService: UserService,
+  planService?: PlanService
+): Router {
   const router = Router();
 
   /**
@@ -228,6 +236,88 @@ export function createUserRoutes(userService: UserService): Router {
         res.status(statusCode).json({
           error: {
             code: 'STATS_FAILED',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else {
+        res.status(500).json({
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'An unexpected error occurred',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      }
+    }
+  });
+
+  /**
+   * PUT /user/plan
+   * Change user plan tier (upgrade or downgrade)
+   */
+  router.put('/plan', async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+        return;
+      }
+
+      if (!planService) {
+        res.status(501).json({
+          error: {
+            code: 'NOT_IMPLEMENTED',
+            message: 'Plan management service not available',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+        return;
+      }
+
+      // Validate request body
+      const data = changePlanSchema.parse(req.body);
+
+      // Change plan
+      const result = await planService.changePlan(req.user.userId, data.plan);
+
+      res.status(200).json({
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          plan: result.user.plan,
+          createdAt: result.user.createdAt,
+          updatedAt: result.user.updatedAt,
+        },
+        backupTriggered: result.backupTriggered,
+        retentionApplied: result.retentionApplied,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request data',
+            details: error.errors,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else if (error instanceof Error) {
+        const statusCode = error.message === 'User not found' ? 404 : 400;
+        res.status(statusCode).json({
+          error: {
+            code: 'PLAN_CHANGE_FAILED',
             message: error.message,
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',

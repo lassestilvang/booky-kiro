@@ -33,6 +33,13 @@ export class HighlightRepository extends BaseRepository<Highlight> {
   }
 
   /**
+   * Find all highlights by user ID (for backups)
+   */
+  async findByUserId(userId: string): Promise<Highlight[]> {
+    return this.findByOwner(userId);
+  }
+
+  /**
    * Find highlights by owner with pagination
    */
   async findByOwnerPaginated(

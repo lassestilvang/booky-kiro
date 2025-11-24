@@ -1,0 +1,966 @@
+openapi: 3.0.3
+info:
+  title: Bookmark Manager Platform API
+  description: |
+    Production-ready bookmark management platform with comprehensive organization, archiving, search, and collaboration capabilities.
+
+    ## Features
+    - Save and organize web bookmarks with rich metadata
+    - Hierarchical collections with custom icons
+    - Multi-tag support with advanced filtering
+    - Full-text search within saved page content (Pro)
+    - Permanent archival with page snapshots (Pro)
+    - Highlights and annotations (Pro)
+    - Collaboration and sharing (Pro)
+    - Cross-device real-time synchronization
+
+    ## Authentication
+    The API supports two authentication methods:
+    1. **JWT Bearer Tokens** - For direct user authentication
+    2. **OAuth 2.0 with PKCE** - For third-party applications
+
+    ## Rate Limiting
+    - Free tier: 100 requests per minute per user
+    - Pro tier: 500 requests per minute per user
+    - Developer API: Rate limits based on application tier
+
+    When rate limits are exceeded, the API returns HTTP 429 with `Retry-After` header.
+
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@bookmarkmanager.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.bookmarkmanager.example.com/v1
+    description: Production server
+  - url: http://localhost:3000/v1
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: OAuth
+    description: OAuth 2.0 authorization for third-party applications
+  - name: Users
+    description: User profile and account management
+  - name: Collections
+    description: Bookmark collection organization
+  - name: Bookmarks
+    description: Bookmark creation and management
+  - name: Tags
+    description: Tag management and organization
+  - name: Search
+    description: Full-text search and filtering
+  - name: Highlights
+    description: Text highlights and annotations (Pro)
+  - name: Files
+    description: File uploads and management (Pro)
+  - name: Backups
+    description: Automated backups (Pro)
+  - name: Reminders
+    description: Bookmark reminders (Pro)
+  - name: Import/Export
+    description: Data import and export
+  - name: GDPR
+    description: Data privacy and compliance
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token obtained from /auth/login
+
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth/authorize
+          tokenUrl: /oauth/token
+          scopes:
+            read: Read access to bookmarks and collections
+            write: Create and update bookmarks and collections
+            delete: Delete bookmarks and collections
+            admin: Full administrative access
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - timestamp
+            - requestId
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: INVALID_REQUEST
+            message:
+              type: string
+              description: Human-readable error message
+              example: Invalid request parameters
+            details:
+              type: object
+              description: Additional error context
+            timestamp:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp
+            requestId:
+              type: string
+              description: Unique request identifier for tracing
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - name
+        - plan
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User email address
+        name:
+          type: string
+          description: User display name
+        plan:
+          type: string
+          enum: [free, pro]
+          description: User subscription plan
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    Collection:
+      type: object
+      required:
+        - id
+        - owner_id
+        - title
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 255
+        icon:
+          type: string
+          maxLength: 100
+          description: Icon identifier
+        is_public:
+          type: boolean
+          default: false
+        share_slug:
+          type: string
+          maxLength: 50
+          description: Unique slug for public sharing
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent collection for hierarchy
+        sort_order:
+          type: integer
+          description: Custom sort order
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Bookmark:
+      type: object
+      required:
+        - id
+        - owner_id
+        - title
+        - url
+        - type
+        - domain
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        collection_id:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          maxLength: 500
+        url:
+          type: string
+          format: uri
+        excerpt:
+          type: string
+          nullable: true
+        content_snapshot_path:
+          type: string
+          nullable: true
+          description: Path to archived snapshot (Pro)
+        content_indexed:
+          type: boolean
+          default: false
+        type:
+          type: string
+          enum: [article, video, image, file, document]
+        domain:
+          type: string
+          maxLength: 255
+        cover_url:
+          type: string
+          format: uri
+          nullable: true
+        is_duplicate:
+          type: boolean
+          default: false
+        is_broken:
+          type: boolean
+          default: false
+        custom_order:
+          type: integer
+          nullable: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+        highlights:
+          type: array
+          items:
+            $ref: '#/components/schemas/Highlight'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Tag:
+      type: object
+      required:
+        - id
+        - owner_id
+        - name
+        - normalized_name
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 100
+        normalized_name:
+          type: string
+          maxLength: 100
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          example: '#FF5733'
+        created_at:
+          type: string
+          format: date-time
+
+    Highlight:
+      type: object
+      required:
+        - id
+        - bookmark_id
+        - owner_id
+        - text_selected
+        - color
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookmark_id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        text_selected:
+          type: string
+          description: Selected text content
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          default: '#FFFF00'
+        annotation_md:
+          type: string
+          nullable: true
+          description: Markdown annotation
+        position_context:
+          type: object
+          description: Position information for re-highlighting
+        snapshot_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OAuthClient:
+      type: object
+      required:
+        - id
+        - client_id
+        - name
+        - redirect_uris
+        - is_public
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          description: OAuth client identifier
+        client_secret:
+          type: string
+          description: Client secret (only returned on registration for confidential clients)
+        name:
+          type: string
+          maxLength: 255
+          description: Application name
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Allowed redirect URIs
+        is_public:
+          type: boolean
+          description: Whether this is a public client (PKCE required)
+        created_at:
+          type: string
+          format: date-time
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user account
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - name
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                  description: Password must be at least 8 characters
+                name:
+                  type: string
+                  maxLength: 255
+            example:
+              email: user@example.com
+              password: securepassword123
+              name: John Doe
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login with email and password
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+            example:
+              email: user@example.com
+              password: securepassword123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  access_token:
+                    type: string
+                    description: JWT access token (15 minutes)
+                  refresh_token:
+                    type: string
+                    description: JWT refresh token (7 days)
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /oauth/clients:
+    post:
+      tags:
+        - OAuth
+      summary: Register a new OAuth client application
+      operationId: registerOAuthClient
+      description: |
+        Register a third-party application to access the API on behalf of users.
+        Public clients (mobile apps, SPAs) should use PKCE flow.
+        Confidential clients (server-side apps) receive a client secret.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - redirect_uris
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: Application name
+                redirect_uris:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                  minItems: 1
+                  description: Allowed redirect URIs for OAuth flow
+                is_public:
+                  type: boolean
+                  default: true
+                  description: Whether this is a public client (requires PKCE)
+            example:
+              name: My Bookmark App
+              redirect_uris:
+                - https://myapp.example.com/callback
+              is_public: true
+      responses:
+        '201':
+          description: OAuth client registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthClient'
+              example:
+                id: 550e8400-e29b-41d4-a716-446655440000
+                client_id: a1b2c3d4e5f6g7h8
+                name: My Bookmark App
+                redirect_uris:
+                  - https://myapp.example.com/callback
+                is_public: true
+                created_at: '2024-01-15T10:30:00Z'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /oauth/authorize:
+    get:
+      tags:
+        - OAuth
+      summary: OAuth 2.0 authorization endpoint
+      operationId: authorizeOAuth
+      description: |
+        Initiates the OAuth 2.0 authorization flow.
+        Users will be redirected to login/consent screen.
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [code]
+        - name: code_challenge
+          in: query
+          required: true
+          schema:
+            type: string
+          description: PKCE code challenge
+        - name: code_challenge_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [S256, plain]
+        - name: scope
+          in: query
+          schema:
+            type: string
+          description: Space-separated list of scopes
+        - name: state
+          in: query
+          schema:
+            type: string
+          description: Client state for CSRF protection
+      responses:
+        '200':
+          description: Authorization page
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /oauth/token:
+    post:
+      tags:
+        - OAuth
+      summary: Exchange authorization code for access token
+      operationId: exchangeToken
+      description: |
+        Exchange an authorization code for access and refresh tokens.
+        Requires PKCE code verifier for public clients.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - grant_type
+                - code
+                - client_id
+                - redirect_uri
+                - code_verifier
+              properties:
+                grant_type:
+                  type: string
+                  enum: [authorization_code]
+                code:
+                  type: string
+                  description: Authorization code from /oauth/authorize
+                client_id:
+                  type: string
+                redirect_uri:
+                  type: string
+                  format: uri
+                code_verifier:
+                  type: string
+                  description: PKCE code verifier
+            example:
+              grant_type: authorization_code
+              code: abc123def456
+              client_id: a1b2c3d4e5f6g7h8
+              redirect_uri: https://myapp.example.com/callback
+              code_verifier: dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+      responses:
+        '200':
+          description: Token issued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    description: Token lifetime in seconds
+                    example: 900
+                  scope:
+                    type: string
+                    description: Space-separated list of granted scopes
+              example:
+                access_token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+                refresh_token: def456ghi789jkl012mno345pqr678stu901
+                token_type: Bearer
+                expires_in: 900
+                scope: read write
+        '400':
+          description: Invalid request or grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bookmarks:
+    get:
+      tags:
+        - Bookmarks
+      summary: List bookmarks with filtering
+      operationId: listBookmarks
+      security:
+        - bearerAuth: []
+        - oauth2: [read]
+      parameters:
+        - name: collection_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by collection
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          description: Filter by tags (comma-separated)
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [article, video, image, file, document]
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of bookmarks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookmarks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bookmark'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds until rate limit resets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Bookmarks
+      summary: Create a new bookmark
+      operationId: createBookmark
+      security:
+        - bearerAuth: []
+        - oauth2: [write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                title:
+                  type: string
+                  maxLength: 500
+                excerpt:
+                  type: string
+                collection_id:
+                  type: string
+                  format: uuid
+                tags:
+                  type: array
+                  items:
+                    type: string
+                note:
+                  type: string
+            example:
+              url: https://example.com/article
+              title: Interesting Article
+              excerpt: This is a great article about...
+              collection_id: 550e8400-e29b-41d4-a716-446655440000
+              tags:
+                - javascript
+                - web-development
+      responses:
+        '201':
+          description: Bookmark created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [processing, completed]
+                  bookmark:
+                    $ref: '#/components/schemas/Bookmark'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /search:
+    get:
+      tags:
+        - Search
+      summary: Search bookmarks
+      operationId: searchBookmarks
+      security:
+        - bearerAuth: []
+        - oauth2: [read]
+      description: |
+        Search bookmarks with full-text search (Pro) or title/metadata search (Free).
+        Pro users can search within page content, PDFs, and EPUBs.
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search query
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: type
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [article, video, image, file, document]
+        - name: domain
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: collection
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: fulltext
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Enable full-text search (Pro only)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        title:
+                          type: string
+                        url:
+                          type: string
+                          format: uri
+                        excerpt:
+                          type: string
+                        highlights:
+                          type: array
+                          items:
+                            type: string
+                          description: Matched snippets with highlighting
+                        score:
+                          type: number
+                          description: Relevance score
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  took:
+                    type: integer
+                    description: Query time in milliseconds
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Pro feature access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

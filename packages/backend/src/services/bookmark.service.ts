@@ -236,6 +236,210 @@ export class BookmarkService {
   }
 
   /**
+   * Bulk add tags to multiple bookmarks
+   */
+  async bulkAddTags(
+    userId: string,
+    bookmarkIds: string[],
+    tagNames: string[]
+  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+    const errors: Array<{ bookmarkId: string; error: string }> = [];
+    let processedCount = 0;
+
+    // Create or get tags
+    const tags = await this.createOrGetTags(userId, tagNames);
+    const tagIds = tags.map((tag) => tag.id);
+
+    // Process each bookmark
+    for (const bookmarkId of bookmarkIds) {
+      try {
+        // Verify ownership
+        const bookmark = await this.bookmarkRepository.findById(bookmarkId);
+        if (!bookmark) {
+          errors.push({ bookmarkId, error: 'Bookmark not found' });
+          continue;
+        }
+
+        if (bookmark.ownerId !== userId) {
+          errors.push({ bookmarkId, error: 'Access denied' });
+          continue;
+        }
+
+        // Add tags
+        await this.bookmarkRepository.addTags(bookmarkId, tagIds);
+        processedCount++;
+      } catch (error) {
+        errors.push({
+          bookmarkId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return {
+      processedCount,
+      failedCount: errors.length,
+      errors,
+    };
+  }
+
+  /**
+   * Bulk remove tags from multiple bookmarks
+   */
+  async bulkRemoveTags(
+    userId: string,
+    bookmarkIds: string[],
+    tagNames: string[]
+  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+    const errors: Array<{ bookmarkId: string; error: string }> = [];
+    let processedCount = 0;
+
+    // Get tag IDs
+    const tagIds: string[] = [];
+    for (const name of tagNames) {
+      const normalizedName = name.toLowerCase().trim();
+      const tag = await this.tagRepository.findByNormalizedName(userId, normalizedName);
+      if (tag) {
+        tagIds.push(tag.id);
+      }
+    }
+
+    // Process each bookmark
+    for (const bookmarkId of bookmarkIds) {
+      try {
+        // Verify ownership
+        const bookmark = await this.bookmarkRepository.findById(bookmarkId);
+        if (!bookmark) {
+          errors.push({ bookmarkId, error: 'Bookmark not found' });
+          continue;
+        }
+
+        if (bookmark.ownerId !== userId) {
+          errors.push({ bookmarkId, error: 'Access denied' });
+          continue;
+        }
+
+        // Remove tags
+        await this.bookmarkRepository.removeTags(bookmarkId, tagIds);
+        processedCount++;
+      } catch (error) {
+        errors.push({
+          bookmarkId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return {
+      processedCount,
+      failedCount: errors.length,
+      errors,
+    };
+  }
+
+  /**
+   * Bulk move bookmarks to a collection
+   */
+  async bulkMoveToCollection(
+    userId: string,
+    bookmarkIds: string[],
+    collectionId: string | null
+  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+    const errors: Array<{ bookmarkId: string; error: string }> = [];
+
+    // Verify ownership of all bookmarks
+    for (const bookmarkId of bookmarkIds) {
+      const bookmark = await this.bookmarkRepository.findById(bookmarkId);
+      if (!bookmark) {
+        errors.push({ bookmarkId, error: 'Bookmark not found' });
+      } else if (bookmark.ownerId !== userId) {
+        errors.push({ bookmarkId, error: 'Access denied' });
+      }
+    }
+
+    // If any errors, don't proceed (atomicity)
+    if (errors.length > 0) {
+      return {
+        processedCount: 0,
+        failedCount: errors.length,
+        errors,
+      };
+    }
+
+    // Perform bulk move
+    const processedCount = await this.bookmarkRepository.bulkMoveToCollection(
+      bookmarkIds,
+      collectionId
+    );
+
+    return {
+      processedCount,
+      failedCount: 0,
+      errors: [],
+    };
+  }
+
+  /**
+   * Bulk delete bookmarks
+   */
+  async bulkDeleteBookmarks(
+    userId: string,
+    bookmarkIds: string[]
+  ): Promise<{ processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> }> {
+    const errors: Array<{ bookmarkId: string; error: string }> = [];
+
+    // Verify ownership of all bookmarks
+    for (const bookmarkId of bookmarkIds) {
+      const bookmark = await this.bookmarkRepository.findById(bookmarkId);
+      if (!bookmark) {
+        errors.push({ bookmarkId, error: 'Bookmark not found' });
+      } else if (bookmark.ownerId !== userId) {
+        errors.push({ bookmarkId, error: 'Access denied' });
+      }
+    }
+
+    // If any errors, don't proceed (atomicity)
+    if (errors.length > 0) {
+      return {
+        processedCount: 0,
+        failedCount: errors.length,
+        errors,
+      };
+    }
+
+    // Perform bulk delete
+    const processedCount = await this.bookmarkRepository.bulkDelete(bookmarkIds);
+
+    return {
+      processedCount,
+      failedCount: 0,
+      errors: [],
+    };
+  }
+
+  /**
+   * Update custom order for bookmarks
+   */
+  async updateCustomOrder(
+    userId: string,
+    updates: Array<{ id: string; order: number }>
+  ): Promise<void> {
+    // Verify ownership of all bookmarks
+    for (const update of updates) {
+      const bookmark = await this.bookmarkRepository.findById(update.id);
+      if (!bookmark) {
+        throw new Error(`Bookmark ${update.id} not found`);
+      }
+      if (bookmark.ownerId !== userId) {
+        throw new Error(`Access denied for bookmark ${update.id}`);
+      }
+    }
+
+    // Update custom order
+    await this.bookmarkRepository.updateCustomOrder(updates);
+  }
+
+  /**
    * Create or get existing tags
    */
   private async createOrGetTags(userId: string, tagNames: string[]): Promise<any[]> {

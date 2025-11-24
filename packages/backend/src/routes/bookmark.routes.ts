@@ -37,6 +37,26 @@ const listBookmarksSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
+const bulkActionSchema = z.object({
+  bookmarkIds: z.array(z.string().uuid()).min(1),
+  action: z.enum(['add_tags', 'remove_tags', 'move', 'delete']),
+  params: z
+    .object({
+      tags: z.array(z.string()).optional(),
+      collectionId: z.string().uuid().nullable().optional(),
+    })
+    .optional(),
+});
+
+const updateCustomOrderSchema = z.object({
+  updates: z.array(
+    z.object({
+      id: z.string().uuid(),
+      order: z.number().int().min(0),
+    })
+  ).min(1),
+});
+
 /**
  * Create bookmark management routes
  */
@@ -383,6 +403,224 @@ export function createBookmarkRoutes(bookmarkService: BookmarkService): Router {
         res.status(statusCode).json({
           error: {
             code: 'DELETE_FAILED',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else {
+        res.status(500).json({
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'An unexpected error occurred',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      }
+    }
+  });
+
+  /**
+   * PUT /bookmarks/order
+   * Update custom order for bookmarks
+   */
+  router.put('/order', async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+        return;
+      }
+
+      // Validate request body
+      const data = updateCustomOrderSchema.parse(req.body);
+
+      // Update custom order
+      await bookmarkService.updateCustomOrder(req.user.userId, data.updates);
+
+      res.status(200).json({
+        success: true,
+        message: 'Custom order updated successfully',
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request data',
+            details: error.errors,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else if (error instanceof Error) {
+        const statusCode =
+          error.message.includes('not found')
+            ? 404
+            : error.message.includes('Access denied')
+              ? 403
+              : 400;
+        res.status(statusCode).json({
+          error: {
+            code: 'UPDATE_ORDER_FAILED',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else {
+        res.status(500).json({
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'An unexpected error occurred',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      }
+    }
+  });
+
+  /**
+   * POST /bookmarks/bulk
+   * Perform bulk operations on bookmarks
+   */
+  router.post('/bulk', async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+        return;
+      }
+
+      // Validate request body
+      const data = bulkActionSchema.parse(req.body);
+
+      // Check if this is a large batch (>100 items) - for now, process synchronously
+      // In production, this should be handled asynchronously via job queue
+      if (data.bookmarkIds.length > 100) {
+        res.status(400).json({
+          error: {
+            code: 'BATCH_TOO_LARGE',
+            message: 'Batch size exceeds 100 items. Please use smaller batches.',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+        return;
+      }
+
+      let result: { processedCount: number; failedCount: number; errors: Array<{ bookmarkId: string; error: string }> };
+
+      // Execute the appropriate bulk action
+      switch (data.action) {
+        case 'add_tags':
+          if (!data.params?.tags || data.params.tags.length === 0) {
+            res.status(400).json({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Tags are required for add_tags action',
+                timestamp: new Date().toISOString(),
+                requestId: req.headers['x-request-id'] || 'unknown',
+              },
+            });
+            return;
+          }
+          result = await bookmarkService.bulkAddTags(
+            req.user.userId,
+            data.bookmarkIds,
+            data.params.tags
+          );
+          break;
+
+        case 'remove_tags':
+          if (!data.params?.tags || data.params.tags.length === 0) {
+            res.status(400).json({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Tags are required for remove_tags action',
+                timestamp: new Date().toISOString(),
+                requestId: req.headers['x-request-id'] || 'unknown',
+              },
+            });
+            return;
+          }
+          result = await bookmarkService.bulkRemoveTags(
+            req.user.userId,
+            data.bookmarkIds,
+            data.params.tags
+          );
+          break;
+
+        case 'move':
+          if (data.params?.collectionId === undefined) {
+            res.status(400).json({
+              error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Collection ID is required for move action',
+                timestamp: new Date().toISOString(),
+                requestId: req.headers['x-request-id'] || 'unknown',
+              },
+            });
+            return;
+          }
+          result = await bookmarkService.bulkMoveToCollection(
+            req.user.userId,
+            data.bookmarkIds,
+            data.params.collectionId
+          );
+          break;
+
+        case 'delete':
+          result = await bookmarkService.bulkDeleteBookmarks(req.user.userId, data.bookmarkIds);
+          break;
+
+        default:
+          res.status(400).json({
+            error: {
+              code: 'INVALID_ACTION',
+              message: 'Invalid bulk action',
+              timestamp: new Date().toISOString(),
+              requestId: req.headers['x-request-id'] || 'unknown',
+            },
+          });
+          return;
+      }
+
+      res.status(200).json({
+        success: result.failedCount === 0,
+        processedCount: result.processedCount,
+        failedCount: result.failedCount,
+        errors: result.errors.length > 0 ? result.errors : undefined,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request data',
+            details: error.errors,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else if (error instanceof Error) {
+        res.status(400).json({
+          error: {
+            code: 'BULK_ACTION_FAILED',
             message: error.message,
             timestamp: new Date().toISOString(),
             requestId: req.headers['x-request-id'] || 'unknown',

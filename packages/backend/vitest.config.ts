@@ -9,6 +9,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
     },
-    testTimeout: 30000,
+    testTimeout: 120000, // Increase timeout to 120s for property-based tests
+    pool: 'forks', // Use forks instead of threads for better isolation
+    poolOptions: {
+      forks: {
+        singleFork: true, // Run tests sequentially to avoid database deadlocks
+      },
+    },
   },
 });

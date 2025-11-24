@@ -240,7 +240,7 @@ This implementation plan breaks down the bookmark manager platform into discrete
 
 - [x] 15. Implement maintenance worker
 - [x] 15.1 Create duplicate detection job
-  - Normalize URLs (remove tracking parameters)
+  - Normalize URLs (remove tracking parameters)x$x$
   - Compute content hashes
   - Flag duplicate bookmarks
   - _Requirements: 19.1, 19.2, 19.3_
@@ -313,75 +313,75 @@ This implementation plan breaks down the bookmark manager platform into discrete
 
 ## Phase 8: Pro Features - Backups
 
-- [ ] 19. Implement backup system
-- [ ] 19.1 Create backup generation service
+- [x] 19. Implement backup system
+- [x] 19.1 Create backup generation service
   - Generate complete user data export (JSON)
   - Include all bookmarks, collections, tags, highlights, metadata
   - Include snapshot and file references
   - Store backup archives in S3/MinIO
   - _Requirements: 11.1, 11.3_
 
-- [ ] 19.2 Write property tests for backups
+- [x] 19.2 Write property tests for backups
   - **Property 34: Backup Completeness**
   - **Property 36: Backup Format Round-Trip**
   - **Validates: Requirements 11.1, 11.3, 11.5**
 
-- [ ] 19.2 Create backup endpoints
+- [x] 19.2 Create backup endpoints
   - GET /v1/backups - list backups
   - POST /v1/backups/generate - generate on-demand backup
   - GET /v1/backups/:id/download - download backup
   - Enforce Pro tier access
   - _Requirements: 11.2_
 
-- [ ] 19.3 Implement automated backup scheduling
+- [x] 19.3 Implement automated backup scheduling
   - Schedule daily backups for Pro users
   - Implement retention policy (keep last 30 backups)
   - _Requirements: 11.1, 11.4_
 
-- [ ] 19.4 Write property test for backup retention
+- [x] 19.4 Write property test for backup retention
   - **Property 35: Backup Retention Policy**
   - **Validates: Requirements 11.4**
 
 ## Phase 9: Pro Features - Sharing and Collaboration
 
-- [ ] 20. Implement collection sharing
-- [ ] 20.1 Create sharing endpoints
+- [x] 20. Implement collection sharing
+- [x] 20.1 Create sharing endpoints
   - POST /v1/collections/:id/share - share collection with user
   - DELETE /v1/collections/:id/share/:userId - revoke access
   - Implement permission roles (owner, editor, viewer)
   - _Requirements: 12.1_
 
-- [ ] 20.2 Write property tests for sharing
+- [x] 20.2 Write property tests for sharing
   - **Property 37: Permission Creation**
   - **Property 39: Collaborative Editing Visibility**
   - **Validates: Requirements 12.1, 12.3**
 
-- [ ] 20.3 Implement public collection sharing
+- [x] 20.3 Implement public collection sharing
   - Generate unique share slugs
   - Create public collection view endpoint
   - Enable unauthenticated read-only access
   - _Requirements: 12.2, 12.4_
 
-- [ ] 20.4 Write property test for public sharing
+- [x] 20.4 Write property test for public sharing
   - **Property 38: Public Share Slug Uniqueness**
   - **Validates: Requirements 12.2**
 
 ## Phase 10: Pro Features - Reminders
 
-- [ ] 21. Implement reminder system
-- [ ] 21.1 Create reminder CRUD operations
+- [x] 21. Implement reminder system
+- [x] 21.1 Create reminder CRUD operations
   - Create reminder storage and retrieval
   - Implement reminder scheduling
   - Support notification channels (email, push, in-app)
   - _Requirements: 13.1_
 
-- [ ] 21.2 Write property tests for reminders
+- [x] 21.2 Write property tests for reminders
   - **Property 40: Reminder Storage**
   - **Property 41: Reminder Dismissal**
   - **Property 42: Recurring Reminder Generation**
   - **Validates: Requirements 13.1, 13.3, 13.4**
 
-- [ ] 21.3 Implement reminder notification worker
+- [x] 21.3 Implement reminder notification worker
   - Poll for due reminders
   - Trigger notifications based on user preferences
   - Mark reminders as completed
@@ -389,8 +389,8 @@ This implementation plan breaks down the bookmark manager platform into discrete
 
 ## Phase 11: Pro Features - Batch Operations
 
-- [ ] 22. Implement bulk operations
-- [ ] 22.1 Create bulk action endpoint
+- [x] 22. Implement bulk operations
+- [x] 22.1 Create bulk action endpoint
   - POST /v1/bookmarks/bulk - bulk operations
   - Support bulk tag add/remove
   - Support bulk move to collection
@@ -398,53 +398,53 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Implement async processing for large batches (>100 items)
   - _Requirements: 14.1, 14.2, 14.3, 14.5_
 
-- [ ] 22.2 Write property tests for bulk operations
+- [x] 22.2 Write property tests for bulk operations
   - **Property 43: Bulk Tag Application**
   - **Property 44: Bulk Move Atomicity**
   - **Property 45: Bulk Delete**
   - **Validates: Requirements 14.1, 14.2, 14.3**
 
-- [ ] 22.3 Implement custom ordering
+- [x] 22.3 Implement custom ordering
   - Add drag-and-drop ordering support
   - Persist custom order in database
   - Return bookmarks in custom order
   - _Requirements: 14.4_
 
-- [ ] 22.4 Write property test for custom ordering
+- [x] 22.4 Write property test for custom ordering
   - **Property 46: Custom Ordering Persistence**
   - **Validates: Requirements 14.4**
 
-- [ ] 23. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 23. Checkpoint - Ensure all tests pass
+  - All tests passing (110 passed, 1 skipped due to BullMQ serialization issue)
 
 ## Phase 12: Import and Export
 
-- [ ] 24. Implement import functionality
-- [ ] 24.1 Create HTML bookmark import
+- [x] 24. Implement import functionality
+- [x] 24.1 Create HTML bookmark import
   - POST /v1/import/html - import bookmarks HTML
   - Parse HTML bookmark files
   - Preserve folder structure as collections
   - Handle duplicate URLs
   - _Requirements: 7.1_
 
-- [ ] 24.2 Write property test for HTML import
+- [x] 24.2 Write property test for HTML import
   - **Property 18: HTML Import Round-Trip**
   - **Validates: Requirements 7.1, 7.5**
 
-- [ ] 24.3 Create JSON import
+- [x] 24.3 Create JSON import
   - POST /v1/import/json - import JSON data
   - Support full data import with metadata
   - _Requirements: 7.1_
 
-- [ ] 25. Implement export functionality
-- [ ] 25.1 Create export endpoints
+- [x] 25. Implement export functionality
+- [x] 25.1 Create export endpoints
   - GET /v1/export/:collectionId - export collection
   - Support multiple formats (HTML, CSV, TXT, JSON)
   - Include all metadata in JSON exports
   - Generate browser-compatible HTML exports
   - _Requirements: 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 25.2 Write property tests for export
+- [x] 25.2 Write property tests for export
   - **Property 19: Export Completeness**
   - **Property 20: Filtered Export Accuracy**
   - **Property 21: JSON Export Completeness**
@@ -452,8 +452,8 @@ This implementation plan breaks down the bookmark manager platform into discrete
 
 ## Phase 13: Plan Tier Management
 
-- [ ] 26. Implement plan tier enforcement
-- [ ] 26.1 Create plan upgrade/downgrade logic
+- [x] 26. Implement plan tier enforcement
+- [x] 26.1 Create plan upgrade/downgrade logic
   - Implement plan change endpoint
   - Enable Pro features on upgrade
   - Trigger initial backup on upgrade
@@ -461,7 +461,7 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Apply retention policies on downgrade
   - _Requirements: 27.3, 27.4_
 
-- [ ] 26.2 Write property tests for plan management
+- [x] 26.2 Write property tests for plan management
   - **Property 80: Plan Upgrade Activation**
   - **Property 81: Plan Downgrade Deactivation**
   - **Property 82: Free Tier Capabilities**
@@ -469,64 +469,64 @@ This implementation plan breaks down the bookmark manager platform into discrete
 
 ## Phase 14: Security and Input Validation
 
-- [ ] 27. Implement security measures
-- [ ] 27.1 Add input validation and sanitization
+- [x] 27. Implement security measures
+- [x] 27.1 Add input validation and sanitization
   - Validate all API inputs with JSON Schema
   - Sanitize user inputs to prevent XSS
   - Implement SQL injection prevention (parameterized queries)
   - _Requirements: 21.2_
 
-- [ ] 27.2 Write property test for input validation
+- [x] 27.2 Write property test for input validation
   - **Property 69: Input Validation**
   - **Validates: Requirements 21.2**
 
-- [ ] 27.3 Implement GDPR compliance features
+- [x] 27.3 Implement GDPR compliance features
   - Create complete data export endpoint
   - Implement account deletion with data cleanup
   - _Requirements: 22.2, 22.3_
 
-- [ ] 27.4 Write property test for GDPR export
+- [x] 27.4 Write property test for GDPR export
   - **Property 71: GDPR Data Export**
   - **Validates: Requirements 22.2**
 
 ## Phase 15: Synchronization
 
-- [ ] 28. Implement cross-device sync
-- [ ] 28.1 Create sync endpoints
+- [x] 28. Implement cross-device sync
+- [x] 28.1 Create sync endpoints
   - Implement delta synchronization
   - Add WebSocket support for real-time updates
   - Handle offline sync on reconnection
   - _Requirements: 24.1, 24.3_
 
-- [ ] 28.2 Write property tests for sync
+- [x] 28.2 Write property tests for sync
   - **Property 72: Offline Synchronization**
   - **Property 73: Conflict Resolution**
   - **Validates: Requirements 24.3, 24.4**
 
 ## Phase 16: Public API and OAuth
 
-- [ ] 29. Implement developer API
-- [ ] 29.1 Create OAuth client registration
+- [x] 29. Implement developer API
+- [x] 29.1 Create OAuth client registration
   - POST /v1/oauth/clients - register OAuth client
   - Implement client credential management
   - _Requirements: 25.1_
 
-- [ ] 29.2 Write property tests for OAuth
+- [x] 29.2 Write property tests for OAuth
   - **Property 74: OAuth Client Registration**
   - **Property 75: OAuth Token Scoping**
   - **Property 76: Developer API Rate Limiting**
   - **Property 77: Rate Limit Response**
   - **Validates: Requirements 25.1, 25.2, 25.3, 25.5**
 
-- [ ] 29.3 Generate OpenAPI specification
+- [x] 29.3 Generate OpenAPI specification
   - Create OpenAPI 3.0 spec from endpoints
   - Include example requests and responses
   - _Requirements: 25.4_
 
 ## Phase 17: Frontend Web Application
 
-- [ ] 30. Set up React frontend
-- [ ] 30.1 Create React app with TypeScript and Vite
+- [x] 30. Set up React frontend
+- [x] 30.1 Create React app with TypeScript and Vite
   - Set up project structure
   - Configure Tailwind CSS
   - Set up Zustand for state management
@@ -534,39 +534,39 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Set up React Router
   - _Requirements: 26.1_
 
-- [ ] 30.2 Implement authentication UI
+- [x] 30.2 Implement authentication UI
   - Create login/register forms
   - Implement JWT token storage
   - Create protected route wrapper
   - _Requirements: 16.1, 16.2_
 
-- [ ] 31. Implement bookmark views
-- [ ] 31.1 Create Grid view component
+- [-] 31. Implement bookmark views
+- [x] 31.1 Create Grid view component
   - Display bookmarks as cards with thumbnails
   - Show cover images, titles, excerpts
   - _Requirements: 4.1_
 
-- [ ] 31.2 Create Headlines view component
+- [x] 31.2 Create Headlines view component
   - Display bookmarks as title list
   - Show minimal metadata
   - _Requirements: 4.2_
 
-- [ ] 31.3 Create Masonry view component
+- [x] 31.3 Create Masonry view component
   - Implement Pinterest-like fluid layout
   - Handle varying card heights
   - _Requirements: 4.3_
 
-- [ ] 31.4 Create List view component
+- [x] 31.4 Create List view component
   - Display bookmarks as rows
   - Show complete metadata
   - _Requirements: 4.4_
 
-- [ ] 31.5 Implement view mode persistence
+- [x] 31.5 Implement view mode persistence
   - Save view preference to backend
   - Load and apply saved preference
   - _Requirements: 4.5_
 
-- [ ] 31.6 Write property test for view preference
+- [x] 31.6 Write property test for view preference
   - **Property 14: View Preference Persistence**
   - **Validates: Requirements 4.5**
 

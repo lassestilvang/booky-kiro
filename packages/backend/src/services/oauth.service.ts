@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 export interface OAuthClient {
   id: string;
   clientId: string;
+  clientSecret?: string; // Only returned on registration for confidential clients
   name: string;
   redirectUris: string[];
   isPublic: boolean;
@@ -38,9 +39,13 @@ export class OAuthService {
     isPublic: boolean = true
   ): Promise<OAuthClient> {
     const clientId = this.generateClientId();
-    const clientSecretHash = isPublic
-      ? null
-      : await this.hashClientSecret(this.generateClientSecret());
+    let clientSecret: string | undefined;
+    let clientSecretHash: string | null = null;
+
+    if (!isPublic) {
+      clientSecret = this.generateClientSecret();
+      clientSecretHash = await this.hashClientSecret(clientSecret);
+    }
 
     const result = await this.pool.query(
       `INSERT INTO oauth_clients (client_id, client_secret_hash, name, redirect_uris, is_public)
@@ -49,7 +54,14 @@ export class OAuthService {
       [clientId, clientSecretHash, name, redirectUris, isPublic]
     );
 
-    return this.mapClientRow(result.rows[0]);
+    const client = this.mapClientRow(result.rows[0]);
+
+    // Only return client secret on registration for confidential clients
+    if (clientSecret) {
+      client.clientSecret = clientSecret;
+    }
+
+    return client;
   }
 
   /**
@@ -142,7 +154,13 @@ export class OAuthService {
     }
 
     // Verify PKCE code verifier
-    if (!this.verifyCodeChallenge(codeVerifier, authCode.codeChallenge, authCode.codeChallengeMethod)) {
+    if (
+      !this.verifyCodeChallenge(
+        codeVerifier,
+        authCode.codeChallenge,
+        authCode.codeChallengeMethod
+      )
+    ) {
       throw new Error('Invalid code verifier');
     }
 
@@ -158,7 +176,14 @@ export class OAuthService {
     await this.pool.query(
       `INSERT INTO oauth_tokens (user_id, client_id, access_token, refresh_token, scopes, expires_at)
        VALUES ($1, (SELECT id FROM oauth_clients WHERE client_id = $2), $3, $4, $5, $6)`,
-      [authCode.userId, clientId, accessToken, refreshToken, authCode.scopes, expiresAt]
+      [
+        authCode.userId,
+        clientId,
+        accessToken,
+        refreshToken,
+        authCode.scopes,
+        expiresAt,
+      ]
     );
 
     return {
@@ -239,6 +264,52 @@ export class OAuthService {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
+  }
+
+  /**
+   * Get token information by access token
+   */
+  async getTokenInfo(accessToken: string): Promise<{
+    userId: string;
+    clientId: string;
+    scopes: string[];
+    expiresAt: Date;
+  } | null> {
+    const result = await this.pool.query(
+      `SELECT ot.user_id, oc.client_id, ot.scopes, ot.expires_at
+       FROM oauth_tokens ot
+       JOIN oauth_clients oc ON ot.client_id = oc.id
+       WHERE ot.access_token = $1 AND ot.expires_at > NOW()`,
+      [accessToken]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return {
+      userId: row.user_id,
+      clientId: row.client_id,
+      scopes: row.scopes || [],
+      expiresAt: new Date(row.expires_at),
+    };
+  }
+
+  /**
+   * Validate token has required scopes
+   */
+  async validateTokenScopes(
+    accessToken: string,
+    requiredScopes: string[]
+  ): Promise<boolean> {
+    const tokenInfo = await this.getTokenInfo(accessToken);
+    if (!tokenInfo) {
+      return false;
+    }
+
+    // Check if token has all required scopes
+    return requiredScopes.every((scope) => tokenInfo.scopes.includes(scope));
   }
 
   /**

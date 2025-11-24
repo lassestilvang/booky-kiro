@@ -6,7 +6,7 @@ import { BookmarkRepository } from '../../repositories/bookmark.repository.js';
 
 /**
  * Property-based tests for maintenance worker
- * 
+ *
  * Tests:
  * - Property 64: URL Normalization
  * - Property 65: Duplicate Flagging
@@ -28,6 +28,11 @@ const bookmarkRepo = new BookmarkRepository(testPool);
 let testUserId: string;
 
 beforeAll(async () => {
+  // Clean up any existing test user first
+  await testPool.query('DELETE FROM users WHERE email = $1', [
+    'maintenance-test@example.com',
+  ]);
+
   // Create test user
   const result = await testPool.query(
     `INSERT INTO users (email, password_hash, name, plan)
@@ -40,23 +45,38 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Clean up test user and related data
-  await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
+  await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [
+    testUserId,
+  ]);
   await testPool.query('DELETE FROM users WHERE id = $1', [testUserId]);
   await testPool.end();
 });
 
 beforeEach(async () => {
   // Clean up bookmarks before each test
-  await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
+  await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [
+    testUserId,
+  ]);
 });
 
 // Mock fetch for broken link tests
 const originalFetch = global.fetch;
-let mockFetchResponses: Map<string, { status: number; shouldTimeout: boolean }> = new Map();
+let mockFetchResponses: Map<
+  string,
+  { status: number; shouldTimeout: boolean }
+> = new Map();
 
 function setupMockFetch() {
-  global.fetch = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
-    const urlString = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+  global.fetch = async (
+    url: string | URL | Request,
+    init?: RequestInit
+  ): Promise<Response> => {
+    const urlString =
+      typeof url === 'string'
+        ? url
+        : url instanceof URL
+          ? url.toString()
+          : url.url;
     const mockResponse = mockFetchResponses.get(urlString);
 
     if (mockResponse) {
@@ -82,7 +102,7 @@ describe('Maintenance Worker Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 64: URL Normalization
    * Validates: Requirements 19.1
-   * 
+   *
    * For any bookmark created, the system should normalize the URL by removing
    * tracking parameters and compute a content hash.
    */
@@ -200,9 +220,9 @@ describe('Maintenance Worker Property Tests', () => {
 
             // Verify non-tracking parameters are preserved
             params.forEach((param) => {
-              expect(normalizedUrl.searchParams.has(param.key.toLowerCase())).toBe(
-                true
-              );
+              expect(
+                normalizedUrl.searchParams.has(param.key.toLowerCase())
+              ).toBe(true);
             });
           }
         ),
@@ -214,7 +234,7 @@ describe('Maintenance Worker Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 65: Duplicate Flagging
    * Validates: Requirements 19.2
-   * 
+   *
    * For any normalized URL matching an existing bookmark, the system should
    * flag the new bookmark as a potential duplicate.
    */
@@ -225,7 +245,12 @@ describe('Maintenance Worker Property Tests', () => {
           fc.webUrl(),
           fc.array(
             fc.record({
-              key: fc.constantFrom('utm_source', 'utm_medium', 'fbclid', 'gclid'),
+              key: fc.constantFrom(
+                'utm_source',
+                'utm_medium',
+                'fbclid',
+                'gclid'
+              ),
               value: fc.string({ minLength: 1, maxLength: 20 }),
             }),
             { minLength: 1, maxLength: 5 }
@@ -252,27 +277,26 @@ describe('Maintenance Worker Property Tests', () => {
 
     it('should identify different URLs as non-duplicates', () => {
       fc.assert(
-        fc.property(
-          fc.webUrl(),
-          fc.webUrl(),
-          (url1, url2) => {
-            // Skip if URLs are already the same
-            fc.pre(url1 !== url2);
+        fc.property(fc.webUrl(), fc.webUrl(), (url1, url2) => {
+          // Skip if URLs are already the same
+          fc.pre(url1 !== url2);
 
-            const normalized1 = normalizeUrl(url1);
-            const normalized2 = normalizeUrl(url2);
+          const normalized1 = normalizeUrl(url1);
+          const normalized2 = normalizeUrl(url2);
 
-            // If base URLs are different, normalized should be different
-            // (unless they happen to normalize to the same thing, which is rare)
-            const url1Obj = new URL(url1);
-            const url2Obj = new URL(url2);
-            
-            // If the base URLs (without query params) are different, normalized should differ
-            if (url1Obj.origin + url1Obj.pathname !== url2Obj.origin + url2Obj.pathname) {
-              expect(normalized1).not.toBe(normalized2);
-            }
+          // If base URLs are different, normalized should be different
+          // (unless they happen to normalize to the same thing, which is rare)
+          const url1Obj = new URL(url1);
+          const url2Obj = new URL(url2);
+
+          // If the base URLs (without query params) are different, normalized should differ
+          if (
+            url1Obj.origin + url1Obj.pathname !==
+            url2Obj.origin + url2Obj.pathname
+          ) {
+            expect(normalized1).not.toBe(normalized2);
           }
-        ),
+        }),
         { numRuns: 100 }
       );
     });
@@ -281,7 +305,7 @@ describe('Maintenance Worker Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 66: Content Hash Duplicate Detection
    * Validates: Requirements 19.3
-   * 
+   *
    * For any two bookmarks with different URLs but identical page content,
    * the system should detect them as duplicates using content hashing.
    */
@@ -326,16 +350,13 @@ describe('Maintenance Worker Property Tests', () => {
 
     it('should compute same hash for content with different case', () => {
       fc.assert(
-        fc.property(
-          fc.string({ minLength: 10, maxLength: 100 }),
-          (content) => {
-            const hash1 = computeContentHash(content.toLowerCase());
-            const hash2 = computeContentHash(content.toUpperCase());
+        fc.property(fc.string({ minLength: 10, maxLength: 100 }), (content) => {
+          const hash1 = computeContentHash(content.toLowerCase());
+          const hash2 = computeContentHash(content.toUpperCase());
 
-            // Should produce same hash despite case differences
-            expect(hash1).toBe(hash2);
-          }
-        ),
+          // Should produce same hash despite case differences
+          expect(hash1).toBe(hash2);
+        }),
         { numRuns: 100 }
       );
     });
@@ -347,8 +368,14 @@ describe('Maintenance Worker Property Tests', () => {
           fc.string({ minLength: 10, maxLength: 100 }),
           (content1, content2) => {
             // Skip if content is the same after normalization
-            const normalized1 = content1.toLowerCase().replace(/\s+/g, ' ').trim();
-            const normalized2 = content2.toLowerCase().replace(/\s+/g, ' ').trim();
+            const normalized1 = content1
+              .toLowerCase()
+              .replace(/\s+/g, ' ')
+              .trim();
+            const normalized2 = content2
+              .toLowerCase()
+              .replace(/\s+/g, ' ')
+              .trim();
             fc.pre(normalized1 !== normalized2);
 
             const hash1 = computeContentHash(content1);
@@ -398,7 +425,7 @@ describe('Maintenance Worker Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 67: Broken Link Detection
    * Validates: Requirements 20.1, 20.2, 20.3
-   * 
+   *
    * For any saved URL, the broken link scanner should request the URL and mark
    * the bookmark as broken if it returns 4xx/5xx status or times out.
    */
@@ -417,15 +444,20 @@ describe('Maintenance Worker Property Tests', () => {
         fc.asyncProperty(
           fc.webUrl(),
           fc.integer({ min: 400, max: 499 }),
-          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => s.trim().length > 0),
           async (url, statusCode, title) => {
             // Ensure testUserId is set
             if (!testUserId) {
               throw new Error('testUserId is not set');
             }
-            
+
             // Setup mock response
-            mockFetchResponses.set(url, { status: statusCode, shouldTimeout: false });
+            mockFetchResponses.set(url, {
+              status: statusCode,
+              shouldTimeout: false,
+            });
 
             // Create bookmark
             const result = await testPool.query(
@@ -459,15 +491,20 @@ describe('Maintenance Worker Property Tests', () => {
         fc.asyncProperty(
           fc.webUrl(),
           fc.integer({ min: 500, max: 599 }),
-          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => s.trim().length > 0),
           async (url, statusCode, title) => {
             // Ensure testUserId is set
             if (!testUserId) {
               throw new Error('testUserId is not set');
             }
-            
+
             // Setup mock response
-            mockFetchResponses.set(url, { status: statusCode, shouldTimeout: false });
+            mockFetchResponses.set(url, {
+              status: statusCode,
+              shouldTimeout: false,
+            });
 
             // Create bookmark
             const result = await testPool.query(
@@ -501,15 +538,20 @@ describe('Maintenance Worker Property Tests', () => {
         fc.asyncProperty(
           fc.webUrl(),
           fc.integer({ min: 200, max: 399 }),
-          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => s.trim().length > 0),
           async (url, statusCode, title) => {
             // Ensure testUserId is set
             if (!testUserId) {
               throw new Error('testUserId is not set');
             }
-            
+
             // Setup mock response
-            mockFetchResponses.set(url, { status: statusCode, shouldTimeout: false });
+            mockFetchResponses.set(url, {
+              status: statusCode,
+              shouldTimeout: false,
+            });
 
             // Create bookmark
             const result = await testPool.query(
@@ -537,14 +579,16 @@ describe('Maintenance Worker Property Tests', () => {
   /**
    * Feature: bookmark-manager-platform, Property 68: Broken Link Filtering
    * Validates: Requirements 20.5
-   * 
+   *
    * For any filter query for broken bookmarks, the system should return only
    * bookmarks flagged as broken.
    */
   describe('Property 68: Broken Link Filtering', () => {
     beforeEach(async () => {
       // Extra cleanup to ensure no bookmarks from other tests
-      await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
+      await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [
+        testUserId,
+      ]);
     });
 
     it('should filter bookmarks by broken status', async () => {
@@ -553,7 +597,9 @@ describe('Maintenance Worker Property Tests', () => {
           fc.array(
             fc.record({
               url: fc.webUrl(),
-              title: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+              title: fc
+                .string({ minLength: 1, maxLength: 50 })
+                .filter((s) => s.trim().length > 0),
               isBroken: fc.boolean(),
             }),
             { minLength: 5, maxLength: 20 }
@@ -563,9 +609,11 @@ describe('Maintenance Worker Property Tests', () => {
             if (!testUserId) {
               throw new Error('testUserId is not set');
             }
-            
+
             // Clean up before this iteration
-            await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
+            await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [
+              testUserId,
+            ]);
 
             // Ensure unique URLs by appending timestamp and index
             const timestamp = Date.now();
@@ -591,16 +639,18 @@ describe('Maintenance Worker Property Tests', () => {
             }
 
             // Filter for broken bookmarks
-            const { bookmarks: brokenBookmarks } = await bookmarkRepo.findWithFilters({
-              ownerId: testUserId,
-              isBroken: true,
-            });
+            const { bookmarks: brokenBookmarks } =
+              await bookmarkRepo.findWithFilters({
+                ownerId: testUserId,
+                isBroken: true,
+              });
 
             // Filter for non-broken bookmarks
-            const { bookmarks: workingBookmarks } = await bookmarkRepo.findWithFilters({
-              ownerId: testUserId,
-              isBroken: false,
-            });
+            const { bookmarks: workingBookmarks } =
+              await bookmarkRepo.findWithFilters({
+                ownerId: testUserId,
+                isBroken: false,
+              });
 
             // Verify all returned bookmarks match the filter
             brokenBookmarks.forEach((b) => {
@@ -612,8 +662,12 @@ describe('Maintenance Worker Property Tests', () => {
             });
 
             // Verify counts match
-            const expectedBroken = uniqueBookmarks.filter((b) => b.isBroken).length;
-            const expectedWorking = uniqueBookmarks.filter((b) => !b.isBroken).length;
+            const expectedBroken = uniqueBookmarks.filter(
+              (b) => b.isBroken
+            ).length;
+            const expectedWorking = uniqueBookmarks.filter(
+              (b) => !b.isBroken
+            ).length;
 
             expect(brokenBookmarks.length).toBe(expectedBroken);
             expect(workingBookmarks.length).toBe(expectedWorking);
@@ -629,7 +683,9 @@ describe('Maintenance Worker Property Tests', () => {
           fc.array(
             fc.record({
               url: fc.webUrl(),
-              title: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+              title: fc
+                .string({ minLength: 1, maxLength: 50 })
+                .filter((s) => s.trim().length > 0),
             }),
             { minLength: 1, maxLength: 10 }
           ),
@@ -638,9 +694,11 @@ describe('Maintenance Worker Property Tests', () => {
             if (!testUserId) {
               throw new Error('testUserId is not set');
             }
-            
+
             // Clean up before this iteration
-            await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
+            await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [
+              testUserId,
+            ]);
 
             // Ensure unique URLs by appending timestamp and index
             const timestamp = Date.now();
@@ -655,7 +713,7 @@ describe('Maintenance Worker Property Tests', () => {
               if (!testUserId) {
                 throw new Error('testUserId is not set in loop');
               }
-              
+
               await testPool.query(
                 `INSERT INTO bookmarks (owner_id, title, url, domain, type, is_broken)
                  VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -671,10 +729,11 @@ describe('Maintenance Worker Property Tests', () => {
             }
 
             // Filter for broken bookmarks
-            const { bookmarks: brokenBookmarks } = await bookmarkRepo.findWithFilters({
-              ownerId: testUserId,
-              isBroken: true,
-            });
+            const { bookmarks: brokenBookmarks } =
+              await bookmarkRepo.findWithFilters({
+                ownerId: testUserId,
+                isBroken: true,
+              });
 
             // Should return empty array
             expect(brokenBookmarks.length).toBe(0);

@@ -1,6 +1,8 @@
 import express, { Application } from 'express';
 import { Pool } from 'pg';
 import { createClient } from 'redis';
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
 import { createAuthRoutes } from './routes/auth.routes.js';
 import { createUserRoutes } from './routes/user.routes.js';
 import { createOAuthRoutes } from './routes/oauth.routes.js';
@@ -10,6 +12,12 @@ import { createTagRoutes } from './routes/tag.routes.js';
 import { createSearchRoutes } from './routes/search.routes.js';
 import { createHighlightRoutes } from './routes/highlight.routes.js';
 import { createFileRoutes } from './routes/file.routes.js';
+import { createReminderRoutes } from './routes/reminder.routes.js';
+import { createImportRoutes } from './routes/import.routes.js';
+import { createExportRoutes } from './routes/export.routes.js';
+import { createGDPRRoutes } from './routes/gdpr.routes.js';
+import { createSyncRoutes } from './routes/sync.routes.js';
+import { createDocsRoutes } from './routes/docs.routes.js';
 import { AuthService } from './services/auth.service.js';
 import { UserService } from './services/user.service.js';
 import { OAuthService } from './services/oauth.service.js';
@@ -19,17 +27,29 @@ import { TagService } from './services/tag.service.js';
 import { SearchService } from './services/search.service.js';
 import { HighlightService } from './services/highlight.service.js';
 import { FileService } from './services/file.service.js';
+import { ReminderService } from './services/reminder.service.js';
+import { ImportService } from './services/import.service.js';
+import { ExportService } from './services/export.service.js';
+import { GDPRService } from './services/gdpr.service.js';
 import { UserRepository } from './repositories/user.repository.js';
 import { CollectionRepository } from './repositories/collection.repository.js';
 import { BookmarkRepository } from './repositories/bookmark.repository.js';
 import { TagRepository } from './repositories/tag.repository.js';
 import { HighlightRepository } from './repositories/highlight.repository.js';
 import { FileRepository } from './repositories/file.repository.js';
+import { ReminderRepository } from './repositories/reminder.repository.js';
+import { BackupRepository } from './repositories/backup.repository.js';
+import { CollectionPermissionRepository } from './repositories/permission.repository.js';
 import { getStorageClient } from './utils/storage.js';
 import { indexQueue } from './queue/config.js';
 import { createAuthMiddleware } from './middleware/auth.middleware.js';
 import { createRateLimitMiddleware } from './middleware/rate-limit.middleware.js';
-import { initializeSearchIndex, checkSearchHealth } from './db/search.config.js';
+import {
+  initializeSearchIndex,
+  checkSearchHealth,
+} from './db/search.config.js';
+import { SyncWebSocketHandler } from './websocket/sync.handler.js';
+import Redis from 'ioredis';
 import * as crypto from 'crypto';
 
 // Generate RSA key pairs for JWT signing (in production, load from secure storage)
@@ -60,7 +80,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'postgres',
 });
 
-// Redis configuration
+// Redis configuration (using ioredis for pub/sub support)
 const redis = createClient({
   socket: {
     host: process.env.REDIS_HOST || 'localhost',
@@ -70,6 +90,12 @@ const redis = createClient({
 
 redis.on('error', (err) => console.error('Redis Client Error', err));
 
+// Create separate Redis client for pub/sub (ioredis)
+const redisPubSub = new Redis({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+});
+
 // Initialize repositories
 const userRepository = new UserRepository(pool);
 const collectionRepository = new CollectionRepository(pool);
@@ -77,6 +103,7 @@ const bookmarkRepository = new BookmarkRepository(pool);
 const tagRepository = new TagRepository(pool);
 const highlightRepository = new HighlightRepository(pool);
 const fileRepository = new FileRepository(pool);
+const permissionRepository = new CollectionPermissionRepository(pool);
 
 // Initialize storage client
 const storageClient = getStorageClient();
@@ -91,12 +118,44 @@ const authService = new AuthService(
 );
 const userService = new UserService(userRepository);
 const oauthService = new OAuthService(pool);
-const collectionService = new CollectionService(collectionRepository, bookmarkRepository);
+const collectionService = new CollectionService(
+  collectionRepository,
+  bookmarkRepository,
+  permissionRepository
+);
 const bookmarkService = new BookmarkService(bookmarkRepository, tagRepository);
 const tagService = new TagService(tagRepository);
 const searchService = new SearchService();
-const highlightService = new HighlightService(highlightRepository, bookmarkRepository, searchService);
-const fileService = new FileService(fileRepository, bookmarkRepository, storageClient, indexQueue);
+const highlightService = new HighlightService(
+  highlightRepository,
+  bookmarkRepository,
+  searchService
+);
+const fileService = new FileService(
+  fileRepository,
+  bookmarkRepository,
+  storageClient,
+  indexQueue
+);
+const reminderService = new ReminderService(pool);
+const importService = new ImportService(
+  bookmarkRepository,
+  collectionRepository,
+  tagRepository
+);
+const exportService = new ExportService(
+  bookmarkRepository,
+  collectionRepository,
+  tagRepository
+);
+const gdprService = new GDPRService(
+  pool,
+  userRepository,
+  bookmarkRepository,
+  collectionRepository,
+  tagRepository,
+  highlightRepository
+);
 
 // Create Express app
 const app: Application = express();
@@ -113,13 +172,59 @@ app.get('/health', (_req, res) => {
 // API routes (without rate limiting for now - will be added when Redis is connected)
 app.use('/v1/auth', createAuthRoutes(authService));
 app.use('/v1/oauth', createOAuthRoutes(oauthService));
-app.use('/v1/user', createAuthMiddleware(authService), createUserRoutes(userService));
-app.use('/v1/collections', createAuthMiddleware(authService), createCollectionRoutes(collectionService));
-app.use('/v1/bookmarks', createAuthMiddleware(authService), createBookmarkRoutes(bookmarkService));
-app.use('/v1/tags', createAuthMiddleware(authService), createTagRoutes(tagService));
-app.use('/v1/search', createAuthMiddleware(authService), createSearchRoutes(searchService));
+app.use(
+  '/v1/user',
+  createAuthMiddleware(authService),
+  createUserRoutes(userService)
+);
+app.use(
+  '/v1/collections',
+  createAuthMiddleware(authService),
+  createCollectionRoutes(collectionService)
+);
+app.use(
+  '/v1/bookmarks',
+  createAuthMiddleware(authService),
+  createBookmarkRoutes(bookmarkService)
+);
+app.use(
+  '/v1/tags',
+  createAuthMiddleware(authService),
+  createTagRoutes(tagService)
+);
+app.use(
+  '/v1/search',
+  createAuthMiddleware(authService),
+  createSearchRoutes(searchService)
+);
 app.use('/v1/highlights', createHighlightRoutes(highlightService, authService));
-app.use('/v1/files', createAuthMiddleware(authService), createFileRoutes(fileService));
+app.use(
+  '/v1/files',
+  createAuthMiddleware(authService),
+  createFileRoutes(fileService)
+);
+app.use('/v1/reminders', createReminderRoutes(reminderService, authService));
+app.use(
+  '/v1/import',
+  createAuthMiddleware(authService),
+  createImportRoutes(importService)
+);
+app.use(
+  '/v1/export',
+  createAuthMiddleware(authService),
+  createExportRoutes(exportService)
+);
+app.use(
+  '/v1/gdpr',
+  createAuthMiddleware(authService),
+  createGDPRRoutes(gdprService)
+);
+app.use(
+  '/v1/sync',
+  createAuthMiddleware(authService),
+  createSyncRoutes(pool, redisPubSub)
+);
+app.use('/v1/docs', createDocsRoutes());
 
 // Start server
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -137,7 +242,9 @@ async function startServer() {
     // Initialize MeiliSearch index
     const searchHealthy = await checkSearchHealth();
     if (!searchHealthy) {
-      console.warn('MeiliSearch is not available - search functionality will be limited');
+      console.warn(
+        'MeiliSearch is not available - search functionality will be limited'
+      );
     } else {
       await initializeSearchIndex();
       console.log('MeiliSearch initialized successfully');
@@ -151,9 +258,28 @@ async function startServer() {
       })
     );
 
-    // Start Express server
-    app.listen(PORT, () => {
+    // Create HTTP server for both Express and WebSocket
+    const server = createServer(app);
+
+    // Create WebSocket server for real-time sync
+    const wss = new WebSocketServer({
+      server,
+      path: '/ws/sync',
+    });
+
+    // Initialize WebSocket sync handler
+    const syncHandler = new SyncWebSocketHandler(
+      wss,
+      pool,
+      redisPubSub,
+      accessKeyPair.publicKey
+    );
+    console.log('WebSocket sync handler initialized');
+
+    // Start HTTP server
+    server.listen(PORT, () => {
       console.log(`Bookmark Manager Backend running on port ${PORT}`);
+      console.log(`WebSocket sync available at ws://localhost:${PORT}/ws/sync`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

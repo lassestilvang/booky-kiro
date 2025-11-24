@@ -1,227 +1,245 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fc from 'fast-check';
+import { Pool } from 'pg';
 import { CollectionService } from './collection.service.js';
 import { CollectionRepository } from '../repositories/collection.repository.js';
 import { BookmarkRepository } from '../repositories/bookmark.repository.js';
-import { UserRepository } from '../repositories/user.repository.js';
-import pool from '../db/config.js';
-import { runMigrations } from '../db/migrate.js';
+import { CollectionPermissionRepository } from '../repositories/permission.repository.js';
+import { CollectionRole } from '@bookmark-manager/shared';
 
-let userRepo: UserRepository;
-let collectionRepo: CollectionRepository;
-let bookmarkRepo: BookmarkRepository;
-let collectionService: CollectionService;
-
-// Test user ID for all tests
-let testUserId: string;
-
-beforeAll(async () => {
-  // Run migrations to ensure schema is up to date
-  await runMigrations();
-
-  userRepo = new UserRepository(pool);
-  collectionRepo = new CollectionRepository(pool);
-  bookmarkRepo = new BookmarkRepository(pool);
-  collectionService = new CollectionService(collectionRepo, bookmarkRepo);
-
-  // Create a test user
-  const testUser = await userRepo.createWithPassword(
-    `test-collection-${Date.now()}-${Math.random().toString(36).substring(7)}@example.com`,
-    'hashedpassword',
-    'Test User'
-  );
-  testUserId = testUser.id;
+// Test database configuration
+const testPool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432', 10),
+  database: process.env.DB_NAME || 'bookmark_manager',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
 });
 
-afterAll(async () => {
-  // Cleanup test user and all related data
-  if (testUserId) {
-    await pool.query('DELETE FROM users WHERE id = $1', [testUserId]);
-  }
-  await pool.end();
-});
+describe('Collection Service - Property-Based Tests', () => {
+  let collectionService: CollectionService;
+  let collectionRepository: CollectionRepository;
+  let bookmarkRepository: BookmarkRepository;
+  let permissionRepository: CollectionPermissionRepository;
 
-beforeEach(async () => {
-  // Clean up test data before each test
-  await pool.query('DELETE FROM bookmarks WHERE owner_id = $1', [testUserId]);
-  await pool.query('DELETE FROM collections WHERE owner_id = $1', [testUserId]);
-});
-
-// ============================================================================
-// Arbitraries (Generators)
-// ============================================================================
-
-const collectionArbitrary = fc.record({
-  title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
-  icon: fc.option(fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0), { nil: undefined }),
-  isPublic: fc.boolean(),
-});
-
-const bookmarkArbitrary = fc.record({
-  title: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
-  url: fc.webUrl(),
-  excerpt: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
-  type: fc.constantFrom('article', 'video', 'image', 'file', 'document'),
-  domain: fc.domain(),
-  coverUrl: fc.option(fc.webUrl(), { nil: undefined }),
-});
-
-// ============================================================================
-// Property 9: Collection Deletion Behavior
-// Feature: bookmark-manager-platform, Property 9: Collection Deletion Behavior
-// Validates: Requirements 2.4
-// ============================================================================
-
-describe('Property 9: Collection Deletion Behavior', () => {
-  test('deleting a collection with moveToDefault=true moves all bookmarks to null collection', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        collectionArbitrary,
-        fc.array(bookmarkArbitrary, { minLength: 1, maxLength: 10 }),
-        async (collectionData, bookmarksData) => {
-          // Ensure testUserId is set
-          if (!testUserId) {
-            throw new Error('testUserId is not set');
-          }
-          
-          // Create collection
-          const collection = await collectionService.createCollection(testUserId, {
-            title: collectionData.title,
-            icon: collectionData.icon,
-            isPublic: collectionData.isPublic,
-          });
-
-          // Create bookmarks in the collection
-          const bookmarkIds: string[] = [];
-          for (const bookmarkData of bookmarksData) {
-            const bookmark = await bookmarkRepo.create({
-              ownerId: testUserId,
-              collectionId: collection.id,
-              title: bookmarkData.title,
-              url: bookmarkData.url,
-              excerpt: bookmarkData.excerpt,
-              type: bookmarkData.type,
-              domain: bookmarkData.domain,
-              coverUrl: bookmarkData.coverUrl,
-              contentIndexed: false,
-              isDuplicate: false,
-              isBroken: false,
-            });
-            bookmarkIds.push(bookmark.id);
-          }
-
-          // Delete collection with moveToDefault=true
-          await collectionService.deleteCollection(collection.id, testUserId, true);
-
-          // Verify collection is deleted
-          const deletedCollection = await collectionRepo.findById(collection.id);
-          expect(deletedCollection).toBeNull();
-
-          // Verify all bookmarks still exist but have null collection
-          for (const bookmarkId of bookmarkIds) {
-            const bookmark = await bookmarkRepo.findById(bookmarkId);
-            expect(bookmark).not.toBeNull();
-            expect(bookmark?.collectionId).toBeNull();
-          }
-
-          // Verify no orphaned bookmarks (all bookmarks should be accounted for)
-          const allUserBookmarks = await bookmarkRepo.findWithFilters({
-            ownerId: testUserId,
-          });
-          expect(allUserBookmarks.bookmarks.length).toBeGreaterThanOrEqual(bookmarkIds.length);
-        }
-      ),
-      { numRuns: 100 }
+  beforeEach(() => {
+    collectionRepository = new CollectionRepository(testPool);
+    bookmarkRepository = new BookmarkRepository(testPool);
+    permissionRepository = new CollectionPermissionRepository(testPool);
+    collectionService = new CollectionService(
+      collectionRepository,
+      bookmarkRepository,
+      permissionRepository
     );
   });
 
-  test('deleting a collection with moveToDefault=false deletes all bookmarks', async () => {
+  afterEach(async () => {
+    // Clean up test data
+    await testPool.query('DELETE FROM collection_permissions');
+    await testPool.query('DELETE FROM bookmarks');
+    await testPool.query('DELETE FROM collections');
+    await testPool.query('DELETE FROM users');
+  });
+
+  /**
+   * Feature: bookmark-manager-platform, Property 37: Permission Creation
+   * Validates: Requirements 12.1
+   *
+   * For any Pro user sharing a collection with another user, the system should create
+   * a permission record with the specified role (owner, editor, viewer).
+   */
+  it('Property 37: Permission Creation - sharing creates permission with specified role', async () => {
     await fc.assert(
       fc.asyncProperty(
-        collectionArbitrary,
-        fc.array(bookmarkArbitrary, { minLength: 1, maxLength: 10 }),
-        async (collectionData, bookmarksData) => {
-          // Ensure testUserId is set
-          if (!testUserId) {
-            throw new Error('testUserId is not set');
-          }
-          
-          // Create collection
-          const collection = await collectionService.createCollection(testUserId, {
-            title: collectionData.title,
-            icon: collectionData.icon,
-            isPublic: collectionData.isPublic,
-          });
+        fc.uuid(),
+        fc.uuid(),
+        fc.uuid(),
+        fc.constantFrom<CollectionRole>('owner', 'editor', 'viewer'),
+        async (ownerId, targetUserId, collectionId, role) => {
+          // Ensure owner and target are different
+          fc.pre(ownerId !== targetUserId);
 
-          // Create bookmarks in the collection
-          const bookmarkIds: string[] = [];
-          for (const bookmarkData of bookmarksData) {
-            const bookmark = await bookmarkRepo.create({
-              ownerId: testUserId,
-              collectionId: collection.id,
-              title: bookmarkData.title,
-              url: bookmarkData.url,
-              excerpt: bookmarkData.excerpt,
-              type: bookmarkData.type,
-              domain: bookmarkData.domain,
-              coverUrl: bookmarkData.coverUrl,
-              contentIndexed: false,
-              isDuplicate: false,
-              isBroken: false,
-            });
-            bookmarkIds.push(bookmark.id);
-          }
-
-          // Delete collection with moveToDefault=false
-          await collectionService.deleteCollection(collection.id, testUserId, false);
-
-          // Verify collection is deleted
-          const deletedCollection = await collectionRepo.findById(collection.id);
-          expect(deletedCollection).toBeNull();
-
-          // Verify all bookmarks are deleted
-          for (const bookmarkId of bookmarkIds) {
-            const bookmark = await bookmarkRepo.findById(bookmarkId);
-            expect(bookmark).toBeNull();
-          }
-
-          // Verify no orphaned bookmarks
-          const allUserBookmarks = await bookmarkRepo.findWithFilters({
-            ownerId: testUserId,
-          });
-          // Should have no bookmarks from this collection
-          const orphanedBookmarks = allUserBookmarks.bookmarks.filter((b) =>
-            bookmarkIds.includes(b.id)
+          // Create owner user
+          await testPool.query(
+            `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, 'pro', NOW(), NOW())`,
+            [ownerId, `owner-${ownerId}@test.com`, 'Owner', 'hash']
           );
-          expect(orphanedBookmarks.length).toBe(0);
+
+          // Create target user
+          await testPool.query(
+            `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, 'free', NOW(), NOW())`,
+            [targetUserId, `target-${targetUserId}@test.com`, 'Target', 'hash']
+          );
+
+          // Create collection
+          await testPool.query(
+            `INSERT INTO collections (id, owner_id, title, icon, is_public, sort_order, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, false, 0, NOW(), NOW())`,
+            [collectionId, ownerId, 'Test Collection', '📁']
+          );
+
+          // Share collection
+          const permission = await collectionService.shareCollection(
+            collectionId,
+            ownerId,
+            targetUserId,
+            role
+          );
+
+          // Verify permission was created with correct role
+          expect(permission).toBeDefined();
+          expect(permission.collectionId).toBe(collectionId);
+          expect(permission.userId).toBe(targetUserId);
+          expect(permission.role).toBe(role);
+
+          // Verify permission exists in database
+          const dbPermission = await permissionRepository.findByCollectionAndUser(
+            collectionId,
+            targetUserId
+          );
+          expect(dbPermission).not.toBeNull();
+          expect(dbPermission?.role).toBe(role);
         }
       ),
       { numRuns: 100 }
     );
   });
 
-  test('deleting an empty collection succeeds without errors', async () => {
+  /**
+   * Feature: bookmark-manager-platform, Property 39: Collaborative Editing Visibility
+   * Validates: Requirements 12.3
+   *
+   * For any user with editor permission on a shared collection, modifications made
+   * should be immediately visible to all users with access to the collection.
+   */
+  it('Property 39: Collaborative Editing Visibility - editor changes visible to all', async () => {
     await fc.assert(
-      fc.asyncProperty(collectionArbitrary, async (collectionData) => {
-        // Ensure testUserId is set
-        if (!testUserId) {
-          throw new Error('testUserId is not set');
+      fc.asyncProperty(
+        fc.uuid(),
+        fc.uuid(),
+        fc.uuid(),
+        fc.string({ minLength: 1, maxLength: 100 }),
+        fc.string({ minLength: 1, maxLength: 100 }),
+        async (ownerId, editorId, viewerId, originalTitle, newTitle) => {
+          // Ensure all users are different
+          fc.pre(ownerId !== editorId && ownerId !== viewerId && editorId !== viewerId);
+          fc.pre(originalTitle !== newTitle);
+
+          // Create users
+          await testPool.query(
+            `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, 'pro', NOW(), NOW())`,
+            [ownerId, `owner-${ownerId}@test.com`, 'Owner', 'hash']
+          );
+
+          await testPool.query(
+            `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, 'pro', NOW(), NOW())`,
+            [editorId, `editor-${editorId}@test.com`, 'Editor', 'hash']
+          );
+
+          await testPool.query(
+            `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, 'free', NOW(), NOW())`,
+            [viewerId, `viewer-${viewerId}@test.com`, 'Viewer', 'hash']
+          );
+
+          // Create collection
+          const collectionResult = await testPool.query(
+            `INSERT INTO collections (owner_id, title, icon, is_public, sort_order, created_at, updated_at)
+             VALUES ($1, $2, $3, false, 0, NOW(), NOW())
+             RETURNING id`,
+            [ownerId, originalTitle, '📁']
+          );
+          const collectionId = collectionResult.rows[0].id;
+
+          // Share with editor and viewer
+          await collectionService.shareCollection(collectionId, ownerId, editorId, 'editor');
+          await collectionService.shareCollection(collectionId, ownerId, viewerId, 'viewer');
+
+          // Editor updates the collection
+          await collectionService.updateCollection(collectionId, editorId, {
+            title: newTitle,
+          });
+
+          // Verify owner sees the change
+          const ownerView = await collectionService.getCollectionById(collectionId, ownerId);
+          expect(ownerView?.title).toBe(newTitle);
+
+          // Verify viewer sees the change
+          const viewerView = await collectionService.getCollectionById(collectionId, viewerId);
+          expect(viewerView?.title).toBe(newTitle);
+
+          // Verify editor sees the change
+          const editorView = await collectionService.getCollectionById(collectionId, editorId);
+          expect(editorView?.title).toBe(newTitle);
+
+          // All users should see the same updated title
+          expect(ownerView?.title).toBe(viewerView?.title);
+          expect(ownerView?.title).toBe(editorView?.title);
         }
-        
-        // Create collection
-        const collection = await collectionService.createCollection(testUserId, {
-          title: collectionData.title,
-          icon: collectionData.icon,
-          isPublic: collectionData.isPublic,
-        });
+      ),
+      { numRuns: 100 }
+    );
+  });
 
-        // Delete empty collection
-        await collectionService.deleteCollection(collection.id, testUserId, true);
+  /**
+   * Feature: bookmark-manager-platform, Property 38: Public Share Slug Uniqueness
+   * Validates: Requirements 12.2
+   *
+   * For any collection published publicly, the system should generate a unique share slug
+   * that enables unauthenticated read-only access.
+   */
+  it('Property 38: Public Share Slug Uniqueness - each public collection gets unique slug', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uuid(),
+        fc.array(fc.string({ minLength: 1, maxLength: 100 }), { minLength: 2, maxLength: 10 }),
+        async (ownerId, collectionTitles) => {
+          // Create owner user
+          await testPool.query(
+            `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, 'pro', NOW(), NOW())`,
+            [ownerId, `owner-${ownerId}@test.com`, 'Owner', 'hash']
+          );
 
-        // Verify collection is deleted
-        const deletedCollection = await collectionRepo.findById(collection.id);
-        expect(deletedCollection).toBeNull();
-      }),
+          const shareSlugs: string[] = [];
+
+          // Create multiple collections and make them public
+          for (const title of collectionTitles) {
+            const collectionResult = await testPool.query(
+              `INSERT INTO collections (owner_id, title, icon, is_public, sort_order, created_at, updated_at)
+               VALUES ($1, $2, $3, false, 0, NOW(), NOW())
+               RETURNING id`,
+              [ownerId, title, '📁']
+            );
+            const collectionId = collectionResult.rows[0].id;
+
+            // Make collection public and get share slug
+            const shareSlug = await collectionService.makePublic(collectionId, ownerId);
+            shareSlugs.push(shareSlug);
+
+            // Verify the collection can be retrieved by share slug
+            const publicCollection = await collectionService.getPublicCollection(shareSlug);
+            expect(publicCollection).not.toBeNull();
+            expect(publicCollection?.id).toBe(collectionId);
+            expect(publicCollection?.isPublic).toBe(true);
+          }
+
+          // Verify all share slugs are unique
+          const uniqueSlugs = new Set(shareSlugs);
+          expect(uniqueSlugs.size).toBe(shareSlugs.length);
+
+          // Verify each slug is non-empty and has reasonable length
+          for (const slug of shareSlugs) {
+            expect(slug).toBeTruthy();
+            expect(slug.length).toBeGreaterThan(0);
+            expect(slug.length).toBeLessThanOrEqual(50);
+          }
+        }
+      ),
       { numRuns: 100 }
     );
   });

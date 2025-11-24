@@ -22,6 +22,13 @@ export class CollectionRepository extends BaseRepository<Collection> {
   }
 
   /**
+   * Find all collections by user ID (for backups)
+   */
+  async findByUserId(userId: string): Promise<Collection[]> {
+    return this.findByOwner(userId);
+  }
+
+  /**
    * Find child collections
    */
   async findChildren(parentId: string): Promise<Collection[]> {

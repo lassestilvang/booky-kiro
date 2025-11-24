@@ -1,6 +1,13 @@
-import { Collection, CreateCollectionRequest, UpdateCollectionRequest } from '@bookmark-manager/shared';
+import {
+  Collection,
+  CreateCollectionRequest,
+  UpdateCollectionRequest,
+  CollectionPermission,
+  CollectionRole,
+} from '@bookmark-manager/shared';
 import { CollectionRepository } from '../repositories/collection.repository.js';
 import { BookmarkRepository } from '../repositories/bookmark.repository.js';
+import { CollectionPermissionRepository } from '../repositories/permission.repository.js';
 
 /**
  * Collection service for managing collections
@@ -8,7 +15,8 @@ import { BookmarkRepository } from '../repositories/bookmark.repository.js';
 export class CollectionService {
   constructor(
     private collectionRepository: CollectionRepository,
-    private bookmarkRepository: BookmarkRepository
+    private bookmarkRepository: BookmarkRepository,
+    private permissionRepository: CollectionPermissionRepository
   ) {}
 
   /**
@@ -28,9 +36,12 @@ export class CollectionService {
       return null;
     }
 
-    // Verify ownership
+    // Check if user is owner or has shared access
     if (collection.ownerId !== userId) {
-      throw new Error('Access denied');
+      const hasAccess = await this.permissionRepository.hasAccess(collectionId, userId);
+      if (!hasAccess) {
+        throw new Error('Access denied');
+      }
     }
 
     return collection;
@@ -60,14 +71,18 @@ export class CollectionService {
     userId: string,
     data: UpdateCollectionRequest
   ): Promise<Collection> {
-    // Verify ownership
+    // Verify ownership or editor permission
     const collection = await this.collectionRepository.findById(collectionId);
     if (!collection) {
       throw new Error('Collection not found');
     }
 
+    // Check if user is owner or has editor permission
     if (collection.ownerId !== userId) {
-      throw new Error('Access denied');
+      const role = await this.permissionRepository.getUserRole(collectionId, userId);
+      if (role !== 'editor' && role !== 'owner') {
+        throw new Error('Access denied');
+      }
     }
 
     // Handle null parentId (move to root level)
@@ -170,5 +185,202 @@ export class CollectionService {
     }
 
     return this.collectionRepository.countBookmarks(collectionId);
+  }
+
+  /**
+   * Share collection with a user
+   */
+  async shareCollection(
+    collectionId: string,
+    ownerId: string,
+    targetUserId: string,
+    role: CollectionRole
+  ): Promise<CollectionPermission> {
+    // Verify ownership
+    const collection = await this.collectionRepository.findById(collectionId);
+    if (!collection) {
+      throw new Error('Collection not found');
+    }
+
+    if (collection.ownerId !== ownerId) {
+      throw new Error('Access denied');
+    }
+
+    // Cannot share with yourself
+    if (targetUserId === ownerId) {
+      throw new Error('Cannot share collection with yourself');
+    }
+
+    // Create or update permission
+    const permission = await this.permissionRepository.upsert({
+      collectionId,
+      userId: targetUserId,
+      role,
+    });
+
+    return permission;
+  }
+
+  /**
+   * Revoke collection access from a user
+   */
+  async revokeAccess(
+    collectionId: string,
+    ownerId: string,
+    targetUserId: string
+  ): Promise<void> {
+    // Verify ownership
+    const collection = await this.collectionRepository.findById(collectionId);
+    if (!collection) {
+      throw new Error('Collection not found');
+    }
+
+    if (collection.ownerId !== ownerId) {
+      throw new Error('Access denied');
+    }
+
+    // Delete permission
+    const deleted = await this.permissionRepository.deleteByCollectionAndUser(
+      collectionId,
+      targetUserId
+    );
+
+    if (!deleted) {
+      throw new Error('Permission not found');
+    }
+  }
+
+  /**
+   * Get all permissions for a collection
+   */
+  async getCollectionPermissions(
+    collectionId: string,
+    userId: string
+  ): Promise<CollectionPermission[]> {
+    // Verify ownership
+    const collection = await this.collectionRepository.findById(collectionId);
+    if (!collection) {
+      throw new Error('Collection not found');
+    }
+
+    if (collection.ownerId !== userId) {
+      throw new Error('Access denied');
+    }
+
+    return this.permissionRepository.findByCollection(collectionId);
+  }
+
+  /**
+   * Get collections shared with a user
+   */
+  async getSharedCollections(userId: string): Promise<Collection[]> {
+    const permissions = await this.permissionRepository.findByUser(userId);
+    const collections: Collection[] = [];
+
+    for (const permission of permissions) {
+      const collection = await this.collectionRepository.findById(permission.collectionId);
+      if (collection) {
+        collections.push(collection);
+      }
+    }
+
+    return collections;
+  }
+
+  /**
+   * Check if user has access to collection (owner or shared)
+   */
+  async hasAccess(collectionId: string, userId: string): Promise<boolean> {
+    const collection = await this.collectionRepository.findById(collectionId);
+    if (!collection) {
+      return false;
+    }
+
+    // Owner has access
+    if (collection.ownerId === userId) {
+      return true;
+    }
+
+    // Check shared access
+    return this.permissionRepository.hasAccess(collectionId, userId);
+  }
+
+  /**
+   * Get user's role for a collection
+   */
+  async getUserRole(
+    collectionId: string,
+    userId: string
+  ): Promise<CollectionRole | null> {
+    const collection = await this.collectionRepository.findById(collectionId);
+    if (!collection) {
+      return null;
+    }
+
+    // Owner has owner role
+    if (collection.ownerId === userId) {
+      return 'owner';
+    }
+
+    // Check shared role
+    return this.permissionRepository.getUserRole(collectionId, userId);
+  }
+
+  /**
+   * Make collection public and generate share slug
+   */
+  async makePublic(collectionId: string, userId: string): Promise<string> {
+    // Verify ownership
+    const collection = await this.collectionRepository.findById(collectionId);
+    if (!collection) {
+      throw new Error('Collection not found');
+    }
+
+    if (collection.ownerId !== userId) {
+      throw new Error('Access denied');
+    }
+
+    // Generate share slug if not exists
+    if (collection.shareSlug) {
+      return collection.shareSlug;
+    }
+
+    const shareSlug = await this.collectionRepository.generateShareSlug(collectionId);
+    
+    // Update isPublic flag
+    await this.collectionRepository.update(collectionId, { isPublic: true });
+
+    return shareSlug;
+  }
+
+  /**
+   * Make collection private
+   */
+  async makePrivate(collectionId: string, userId: string): Promise<void> {
+    // Verify ownership
+    const collection = await this.collectionRepository.findById(collectionId);
+    if (!collection) {
+      throw new Error('Collection not found');
+    }
+
+    if (collection.ownerId !== userId) {
+      throw new Error('Access denied');
+    }
+
+    // Update isPublic flag
+    await this.collectionRepository.update(collectionId, { isPublic: false });
+  }
+
+  /**
+   * Get public collection by share slug (no auth required)
+   */
+  async getPublicCollection(shareSlug: string): Promise<Collection | null> {
+    const collection = await this.collectionRepository.findByShareSlug(shareSlug);
+    
+    if (!collection || !collection.isPublic) {
+      return null;
+    }
+
+    return collection;
   }
 }

@@ -18,6 +18,7 @@ export const QUEUE_NAMES = {
   SNAPSHOT: 'snapshot-processing',
   INDEX: 'content-indexing',
   MAINTENANCE: 'maintenance-tasks',
+  REMINDER: 'reminder-notifications',
 } as const;
 
 // Job priorities
@@ -74,6 +75,16 @@ export const maintenanceQueue = new Queue(QUEUE_NAMES.MAINTENANCE, {
   },
 });
 
+// Reminder notifications queue
+export const reminderQueue = new Queue(QUEUE_NAMES.REMINDER, {
+  ...defaultQueueOptions,
+  defaultJobOptions: {
+    ...defaultQueueOptions.defaultJobOptions,
+    priority: JOB_PRIORITIES.HIGH, // High priority for time-sensitive reminders
+    attempts: 3,
+  },
+});
+
 // Job data interfaces
 export interface SnapshotJobData {
   bookmarkId: string;
@@ -91,6 +102,10 @@ export interface IndexJobData {
 export interface MaintenanceJobData {
   type: 'duplicate-detection' | 'broken-link-scan';
   userId?: string; // Optional: for user-specific maintenance
+}
+
+export interface ReminderJobData {
+  reminderId: string;
 }
 
 // Helper function to enqueue snapshot job
@@ -130,12 +145,24 @@ export async function enqueueMaintenanceJob(
   });
 }
 
+// Helper function to enqueue reminder job
+export async function enqueueReminderJob(
+  data: ReminderJobData,
+  priority: number = JOB_PRIORITIES.HIGH
+) {
+  return await reminderQueue.add('process-reminder', data, {
+    priority,
+    jobId: `reminder-${data.reminderId}`, // Prevent duplicate jobs
+  });
+}
+
 // Graceful shutdown
 export async function closeQueues() {
   await Promise.all([
     snapshotQueue.close(),
     indexQueue.close(),
     maintenanceQueue.close(),
+    reminderQueue.close(),
   ]);
 }
 
@@ -152,6 +179,9 @@ export async function getQueueStats(queueName: string) {
       break;
     case QUEUE_NAMES.MAINTENANCE:
       queue = maintenanceQueue;
+      break;
+    case QUEUE_NAMES.REMINDER:
+      queue = reminderQueue;
       break;
     default:
       throw new Error(`Unknown queue: ${queueName}`);

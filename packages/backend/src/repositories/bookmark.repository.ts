@@ -1,5 +1,10 @@
 import { Pool } from 'pg';
-import { Bookmark, BookmarkWithRelations, Tag, Highlight } from '@bookmark-manager/shared';
+import {
+  Bookmark,
+  BookmarkWithRelations,
+  Tag,
+  Highlight,
+} from '@bookmark-manager/shared';
 import { BaseRepository } from './base.repository.js';
 
 export interface BookmarkFilters {
@@ -41,13 +46,29 @@ export class BookmarkRepository extends BaseRepository<Bookmark> {
   }
 
   /**
+   * Find all bookmarks by user ID (for backups)
+   */
+  async findByUserId(userId: string): Promise<Bookmark[]> {
+    const result = await this.pool.query(
+      'SELECT * FROM bookmarks WHERE owner_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
+    return result.rows.map((row) => this.mapRow(row));
+  }
+
+  /**
    * Find bookmarks with filters and pagination
    */
   async findWithFilters(
     filters: BookmarkFilters,
     pagination?: PaginationOptions
   ): Promise<{ bookmarks: Bookmark[]; total: number }> {
-    const { page = 1, limit = 50, sortBy = 'created_at', sortOrder = 'desc' } = pagination || {};
+    const {
+      page = 1,
+      limit = 50,
+      sortBy = 'created_at',
+      sortOrder = 'desc',
+    } = pagination || {};
     const offset = (page - 1) * limit;
 
     let query = 'SELECT DISTINCT b.* FROM bookmarks b';
@@ -56,13 +77,16 @@ export class BookmarkRepository extends BaseRepository<Bookmark> {
     let paramIndex = 1;
 
     // Join with tags if filtering by tags
+    // Use HAVING COUNT to ensure ALL tags are present (AND logic, not OR)
+    let hasTagFilter = false;
     if (filters.tags && filters.tags.length > 0) {
+      hasTagFilter = true;
       query += `
         INNER JOIN bookmark_tags bt ON b.id = bt.bookmark_id
         INNER JOIN tags t ON bt.tag_id = t.id
       `;
       conditions.push(`t.normalized_name = ANY($${paramIndex})`);
-      params.push(filters.tags.map((tag) => tag.toLowerCase()));
+      params.push(filters.tags.map((tag) => tag.trim().toLowerCase()));
       paramIndex++;
     }
 
@@ -125,8 +149,23 @@ export class BookmarkRepository extends BaseRepository<Bookmark> {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
+    // Add GROUP BY and HAVING for tag filtering (ensures ALL tags match)
+    if (hasTagFilter && filters.tags) {
+      // Must include all selected columns in GROUP BY when using SELECT b.*
+      query += ` GROUP BY b.id, b.owner_id, b.collection_id, b.title, b.url, b.excerpt, b.content_snapshot_path, b.content_indexed, b.type, b.domain, b.cover_url, b.is_duplicate, b.is_broken, b.custom_order, b.created_at, b.updated_at HAVING COUNT(DISTINCT t.normalized_name) = ${filters.tags.length}`;
+    }
+
     // Count total
-    const countQuery = query.replace('SELECT DISTINCT b.*', 'SELECT COUNT(DISTINCT b.id)');
+    // When using GROUP BY, we need to wrap the query in a subquery to count correctly
+    let countQuery: string;
+    if (hasTagFilter && filters.tags) {
+      countQuery = `SELECT COUNT(*) FROM (${query}) AS subquery`;
+    } else {
+      countQuery = query.replace(
+        'SELECT DISTINCT b.*',
+        'SELECT COUNT(DISTINCT b.id)'
+      );
+    }
     const countResult = await this.pool.query(countQuery, params);
     const total = parseInt(countResult.rows[0].count, 10);
 
@@ -144,7 +183,9 @@ export class BookmarkRepository extends BaseRepository<Bookmark> {
   /**
    * Find bookmark with tags and highlights
    */
-  async findByIdWithRelations(id: string): Promise<BookmarkWithRelations | null> {
+  async findByIdWithRelations(
+    id: string
+  ): Promise<BookmarkWithRelations | null> {
     const bookmark = await this.findById(id);
     if (!bookmark) return null;
 
@@ -207,9 +248,9 @@ export class BookmarkRepository extends BaseRepository<Bookmark> {
   async addTags(bookmarkId: string, tagIds: string[]): Promise<void> {
     if (tagIds.length === 0) return;
 
-    const values = tagIds.map((_tagId, index) => 
-      `($1, $${index + 2})`
-    ).join(', ');
+    const values = tagIds
+      .map((_tagId, index) => `($1, $${index + 2})`)
+      .join(', ');
 
     await this.pool.query(
       `INSERT INTO bookmark_tags (bookmark_id, tag_id)
@@ -325,6 +366,33 @@ export class BookmarkRepository extends BaseRepository<Bookmark> {
       [bookmarkIds]
     );
     return result.rowCount || 0;
+  }
+
+  /**
+   * Update custom order for multiple bookmarks
+   */
+  async updateCustomOrder(
+    updates: Array<{ id: string; order: number }>
+  ): Promise<void> {
+    // Use a transaction to update all orders atomically
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      for (const update of updates) {
+        await client.query(
+          'UPDATE bookmarks SET custom_order = $1, updated_at = NOW() WHERE id = $2',
+          [update.order, update.id]
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   protected mapRow(row: any): Bookmark {

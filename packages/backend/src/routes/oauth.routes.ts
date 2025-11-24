@@ -3,6 +3,12 @@ import { OAuthService } from '../services/oauth.service.js';
 import { z } from 'zod';
 
 // Validation schemas
+const registerClientSchema = z.object({
+  name: z.string().min(1).max(255),
+  redirect_uris: z.array(z.string().url()).min(1),
+  is_public: z.boolean().optional().default(true),
+});
+
 const authorizeSchema = z.object({
   client_id: z.string(),
   redirect_uri: z.string().url(),
@@ -26,6 +32,63 @@ const tokenSchema = z.object({
  */
 export function createOAuthRoutes(oauthService: OAuthService): Router {
   const router = Router();
+
+  /**
+   * POST /oauth/clients
+   * Register a new OAuth client application
+   */
+  router.post('/clients', async (req: Request, res: Response) => {
+    try {
+      // Validate request body
+      const params = registerClientSchema.parse(req.body);
+
+      // Register OAuth client
+      const client = await oauthService.registerClient(
+        params.name,
+        params.redirect_uris,
+        params.is_public
+      );
+
+      res.status(201).json({
+        id: client.id,
+        client_id: client.clientId,
+        name: client.name,
+        redirect_uris: client.redirectUris,
+        is_public: client.isPublic,
+        created_at: client.createdAt.toISOString(),
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'Invalid client registration request',
+            details: error.errors,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else if (error instanceof Error) {
+        res.status(400).json({
+          error: {
+            code: 'REGISTRATION_FAILED',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      } else {
+        res.status(500).json({
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'An unexpected error occurred',
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown',
+          },
+        });
+      }
+    }
+  });
 
   /**
    * GET /oauth/authorize
