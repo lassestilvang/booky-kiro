@@ -105,7 +105,7 @@ export function BookmarkDetailModal({
 
       await updateBookmark(bookmark.id, data);
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || 'Failed to update bookmark');
     } finally {
       setLoading(false);
@@ -120,7 +120,7 @@ export function BookmarkDetailModal({
       await deleteBookmark(bookmark.id);
       handleClose();
     } catch (err: unknown) {
-      setError(err.message || 'Failed to delete bookmark');
+      setError((err as Error).message || 'Failed to delete bookmark');
       setLoading(false);
     }
   };

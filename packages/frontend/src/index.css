@@ -1,3 +1,56 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* Smooth theme transitions */
+  * {
+    @apply transition-colors duration-200;
+  }
+
+  /* Focus visible styles for keyboard navigation */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900;
+  }
+
+  /* Ensure proper contrast for text */
+  body {
+    @apply text-gray-900 dark:text-gray-100;
+  }
+
+  /* Accessible link styles */
+  a {
+    @apply underline-offset-2;
+  }
+
+  a:hover {
+    @apply underline;
+  }
+
+  /* Accessible button styles */
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* Skip to main content link for screen readers */
+  .skip-to-main {
+    @apply absolute -top-full left-0 bg-blue-600 text-white px-4 py-2 z-50;
+    @apply focus:top-0;
+  }
+}
+
+@layer utilities {
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    * {
+      @apply border-2;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      @apply transition-none;
+    }
+  }
+}

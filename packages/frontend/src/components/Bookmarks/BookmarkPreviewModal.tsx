@@ -48,7 +48,7 @@ export function BookmarkPreviewModal({
       setPreviewMode('snapshot');
     } catch (err: unknown) {
       setError(
-        err.response?.data?.message ||
+        (err as unknown).response?.data?.message ||
           'Failed to load archived snapshot. The snapshot may not be available yet.'
       );
       setPreviewMode('error');

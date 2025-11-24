@@ -160,7 +160,9 @@ export const useBookmarkStore = create<BookmarkState>((set, get) => ({
       const response = await apiClient.get('/v1/tags');
       return response.data;
     } catch (error: unknown) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch tags');
+      throw new Error(
+        (error as unknown).response?.data?.message || 'Failed to fetch tags'
+      );
     }
   },
 }));

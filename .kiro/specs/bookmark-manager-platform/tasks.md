@@ -621,55 +621,55 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Show archived snapshot when original unavailable
   - _Requirements: 5.1, 5.2_
 
-- [ ] 36. Implement Pro features UI
-- [ ] 36.1 Create highlights UI
+- [x] 36. Implement Pro features UI
+- [x] 36.1 Create highlights UI
   - Text selection highlighting tool
   - Color picker for highlights
   - Annotation editor with Markdown support
   - _Requirements: 10.1, 10.2, 10.3_
 
-- [ ] 36.2 Create file upload UI
+- [x] 36.2 Create file upload UI
   - Drag-and-drop file upload
   - Upload progress indicator
   - File size limit display
   - _Requirements: 15.1_
 
-- [ ] 36.3 Create backup management UI
+- [x] 36.3 Create backup management UI
   - List backups with dates and sizes
   - Generate backup button
   - Download backup button
   - _Requirements: 11.2_
 
-- [ ] 36.4 Create sharing UI
+- [x] 36.4 Create sharing UI
   - Share collection dialog
   - User permission management
   - Public link generation
   - _Requirements: 12.1, 12.2_
 
-- [ ] 37. Implement import/export UI
-- [ ] 37.1 Create import dialog
+- [x] 37. Implement import/export UI
+- [x] 37.1 Create import dialog
   - File upload for HTML/JSON import
   - Import progress indicator
   - _Requirements: 7.1_
 
-- [ ] 37.2 Create export dialog
+- [x] 37.2 Create export dialog
   - Format selection (HTML, CSV, TXT, JSON)
   - Collection/search results export
   - Download button
   - _Requirements: 7.2, 7.3_
 
-- [ ] 38. Implement accessibility and themes
-- [ ] 38.1 Add keyboard navigation
+- [x] 38. Implement accessibility and themes
+- [x] 38.1 Add keyboard navigation
   - Implement keyboard shortcuts
   - Focus management
   - _Requirements: 26.2_
 
-- [ ] 38.2 Implement light/dark themes
+- [x] 38.2 Implement light/dark themes
   - Theme toggle
   - Accessible color contrast
   - _Requirements: 26.3_
 
-- [ ] 38.3 Add ARIA attributes
+- [x] 38.3 Add ARIA attributes
   - Screen reader support
   - Semantic HTML
   - _Requirements: 26.4_
