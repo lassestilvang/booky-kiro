@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookmark Manager</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 320px;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f9fafb;
+        color: #1f2937;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .logo {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+      }
+
+      .auth-status {
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      .auth-status.authenticated {
+        color: #10b981;
+      }
+
+      .button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 8px;
+      }
+
+      .button-primary {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .button-primary:hover {
+        background: #2563eb;
+      }
+
+      .button-secondary {
+        background: white;
+        color: #1f2937;
+        border: 1px solid #e5e7eb;
+      }
+
+      .button-secondary:hover {
+        background: #f9fafb;
+      }
+
+      .button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .divider {
+        height: 1px;
+        background: #e5e7eb;
+        margin: 16px 0;
+      }
+
+      .quick-actions {
+        margin-top: 16px;
+      }
+
+      .quick-actions-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+
+      .status-message {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+
+      .status-success {
+        background: #d1fae5;
+        color: #065f46;
+      }
+
+      .status-error {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .status-info {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .login-prompt {
+        text-align: center;
+        padding: 20px 0;
+      }
+
+      .login-prompt p {
+        color: #6b7280;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo">📚 Bookmark Manager</div>
+        <div class="auth-status" id="authStatus">Not logged in</div>
+      </div>
+
+      <div id="statusMessage" class="status-message hidden"></div>
+
+      <!-- Authenticated View -->
+      <div id="authenticatedView" class="hidden">
+        <button class="button button-primary" id="savePageBtn">
+          💾 Save Current Page
+        </button>
+
+        <div class="quick-actions">
+          <div class="quick-actions-title">Quick Actions</div>
+          <button class="button button-secondary" id="saveAllTabsBtn">
+            📑 Save All Tabs
+          </button>
+          <button class="button button-secondary" id="openSidePanelBtn">
+            📋 Open Side Panel
+          </button>
+          <button class="button button-secondary" id="openWebAppBtn">
+            🌐 Open Web App
+          </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <button class="button button-secondary" id="logoutBtn">
+          🚪 Logout
+        </button>
+      </div>
+
+      <!-- Unauthenticated View -->
+      <div id="unauthenticatedView" class="hidden">
+        <div class="login-prompt">
+          <p>Please log in to save bookmarks</p>
+          <button class="button button-primary" id="loginBtn">
+            🔐 Login with OAuth
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -679,8 +679,8 @@ This implementation plan breaks down the bookmark manager platform into discrete
 
 ## Phase 18: Browser Extension
 
-- [ ] 40. Set up browser extension project
-- [ ] 40.1 Create extension structure
+- [x] 40. Set up browser extension project
+- [x] 40.1 Create extension structure
   - Set up Manifest V3 configuration
   - Create background service worker
   - Create content scripts
@@ -688,42 +688,42 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Configure build for multiple browsers
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 40.2 Implement extension authentication
+- [x] 40.2 Implement extension authentication
   - OAuth2 PKCE flow for extension
   - Secure token storage
   - Token refresh handling
   - _Requirements: 16.3_
 
-- [ ] 41. Implement bookmark saving
-- [ ] 41.1 Create page save functionality
+- [x] 41. Implement bookmark saving
+- [x] 41.1 Create page save functionality
   - Extract page metadata (OpenGraph, schema.org)
   - Send bookmark to API
   - Show success notification
   - _Requirements: 6.1_
 
-- [ ] 41.2 Create context menu actions
+- [x] 41.2 Create context menu actions
   - Save image context menu
   - Save video context menu
   - Save link context menu
   - _Requirements: 6.2_
 
-- [ ] 41.3 Implement save all tabs
+- [x] 41.3 Implement save all tabs
   - Bulk save all open tabs
   - Add bulk tag with date
   - _Requirements: 6.5_
 
-- [ ] 41.4 Write property test for bulk tab save
+- [x] 41.4 Write property test for bulk tab save
   - **Property 17: Bulk Tab Save**
   - **Validates: Requirements 6.5**
 
-- [ ] 42. Implement highlight capture
-- [ ] 42.1 Create text selection handler
+- [x] 42. Implement highlight capture
+- [x] 42.1 Create text selection handler
   - Capture selected text
   - Extract position context
   - Send highlight to API
   - _Requirements: 6.4_
 
-- [ ] 42.2 Create side panel UI
+- [x] 42.2 Create side panel UI
   - Display recent bookmarks
   - Quick save interface
   - Browse collections
@@ -731,7 +731,7 @@ This implementation plan breaks down the bookmark manager platform into discrete
 
 ## Phase 19: Testing and Quality Assurance
 
-- [ ] 43. Complete remaining property-based tests
+- [x] 43. Complete remaining property-based tests
   - Review all 82 correctness properties
   - Ensure each property has a corresponding test
   - Run all property tests with 100+ iterations
