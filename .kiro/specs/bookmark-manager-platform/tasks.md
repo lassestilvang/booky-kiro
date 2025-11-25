@@ -846,7 +846,7 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Backup and recovery procedures
   - _Requirements: All_
 
-- [-] 52. Create demo dataset
+- [x] 52. Create demo dataset
 - [x] 52.1 Generate seed data
   - Create 50 sample bookmarks
   - Create multiple collections
@@ -855,7 +855,7 @@ This implementation plan breaks down the bookmark manager platform into discrete
   - Create shared collections
   - _Requirements: All_
 
-- [-] 52.2 Create demo scripts
+- [x] 52.2 Create demo scripts
   - Seed database script
   - Demo user creation script
   - Sample API requests

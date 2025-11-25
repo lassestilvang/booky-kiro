@@ -153,6 +153,35 @@ This is a Turborepo monorepo with pnpm workspaces:
 
 For detailed setup instructions, see [QUICKSTART.md](QUICKSTART.md).
 
+### 🎭 Demo Setup
+
+Want to explore the platform with sample data? Run the demo setup:
+
+```bash
+# Complete demo setup (creates user + seeds data)
+pnpm demo:setup
+```
+
+This creates:
+
+- Demo user account with Pro plan (`demo@example.com` / `Demo123!`)
+- 10 collections with hierarchical structure
+- 50+ bookmarks across various categories (Web Dev, Design, DevOps, Career, Productivity)
+- Tags on all bookmarks
+- Highlights and annotations (Pro features)
+- Shared collections (Pro features)
+
+**Individual demo commands:**
+
+```bash
+pnpm demo:user      # Create demo user with Pro plan
+pnpm demo:seed      # Seed demo data
+pnpm demo:upgrade   # Upgrade any user to Pro
+pnpm demo:api       # Test API endpoints with curl
+```
+
+See [scripts/README.md](scripts/README.md) for detailed documentation.
+
 ## 📁 Project Structure
 
 ```

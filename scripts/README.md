@@ -9,6 +9,8 @@ This directory contains scripts for creating demo data and testing the Bookmark 
 Creates a demo user account with Pro plan enabled.
 
 ```bash
+npm run demo:user
+# or
 node scripts/create-demo-user.js
 ```
 
@@ -31,6 +33,8 @@ node scripts/create-demo-user.js
 Creates a comprehensive demo dataset with 50+ bookmarks, collections, tags, highlights, and shared collections.
 
 ```bash
+npm run demo:seed
+# or
 node scripts/seed-demo-data.js
 ```
 
@@ -70,6 +74,8 @@ node scripts/seed-demo-data.js
 Upgrades any user account to Pro tier directly in the database.
 
 ```bash
+npm run demo:upgrade [email]
+# or
 node scripts/upgrade-user-to-pro.js [email]
 ```
 
@@ -88,6 +94,8 @@ node scripts/upgrade-user-to-pro.js user@example.com
 Demonstrates common API operations using curl commands.
 
 ```bash
+npm run demo:api
+# or
 ./scripts/sample-api-requests.sh
 ```
 
@@ -145,14 +153,18 @@ npm run docker:up
 cd packages/backend
 npm run dev
 
-# 3. Create demo user with Pro plan
-node scripts/create-demo-user.js
+# 3. Run the complete demo setup (from project root)
+npm run demo:setup
 
-# 4. Seed demo data
-node scripts/seed-demo-data.js
+# Or run steps individually:
+# 3a. Create demo user with Pro plan
+npm run demo:user
 
-# 5. (Optional) Test API endpoints
-./scripts/sample-api-requests.sh
+# 3b. Seed demo data
+npm run demo:seed
+
+# 4. (Optional) Test API endpoints
+npm run demo:api
 ```
 
 ### Login Credentials
