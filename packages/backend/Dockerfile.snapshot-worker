@@ -1,5 +1,5 @@
 # Snapshot Worker Dockerfile
-FROM node:20-alpine AS base
+FROM node:25-alpine AS base
 
 # Install Chromium and dependencies for Playwright
 FROM base AS deps-with-chromium
