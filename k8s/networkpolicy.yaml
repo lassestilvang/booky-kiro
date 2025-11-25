@@ -1,0 +1,153 @@
+---
+# Network policy for API pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-network-policy
+  namespace: bookmark-manager
+spec:
+  podSelector:
+    matchLabels:
+      app: bookmark-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # Allow egress to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow egress to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow egress to MeiliSearch
+    - to:
+        - podSelector:
+            matchLabels:
+              app: meilisearch
+      ports:
+        - protocol: TCP
+          port: 7700
+    # Allow egress to MinIO
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow HTTPS for external APIs
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Network policy for worker pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-network-policy
+  namespace: bookmark-manager
+spec:
+  podSelector:
+    matchLabels:
+      component: worker
+  policyTypes:
+    - Egress
+  egress:
+    # Allow egress to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow egress to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow egress to MeiliSearch
+    - to:
+        - podSelector:
+            matchLabels:
+              app: meilisearch
+      ports:
+        - protocol: TCP
+          port: 7700
+    # Allow egress to MinIO
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow HTTPS for fetching web pages
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+---
+# Network policy for database pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database-network-policy
+  namespace: bookmark-manager
+spec:
+  podSelector:
+    matchLabels:
+      component: database
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow ingress from API and workers
+    - from:
+        - podSelector:
+            matchLabels:
+              app: bookmark-api
+        - podSelector:
+            matchLabels:
+              component: worker
+      ports:
+        - protocol: TCP
+          port: 5432

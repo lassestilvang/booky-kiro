@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snapshot-worker
+  namespace: bookmark-manager
+  labels:
+    app: snapshot-worker
+    component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: snapshot-worker
+  template:
+    metadata:
+      labels:
+        app: snapshot-worker
+        component: worker
+    spec:
+      containers:
+        - name: snapshot-worker
+          image: bookmark-manager/snapshot-worker:latest
+          imagePullPolicy: Always
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: NODE_ENV
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: DB_PASSWORD
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: REDIS_PASSWORD
+            - name: MINIO_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: MINIO_ENDPOINT
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: MINIO_SECRET_KEY
+            - name: MINIO_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: MINIO_BUCKET
+            - name: SNAPSHOT_CONCURRENCY
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: SNAPSHOT_CONCURRENCY
+          resources:
+            requests:
+              memory: '1Gi'
+              cpu: '1000m'
+            limits:
+              memory: '2Gi'
+              cpu: '2000m'
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pgrep -f snapshot-worker
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: snapshot-worker-hpa
+  namespace: bookmark-manager
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: snapshot-worker
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 60

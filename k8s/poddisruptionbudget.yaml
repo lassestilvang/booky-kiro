@@ -1,0 +1,48 @@
+---
+# PodDisruptionBudget for API
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: bookmark-api-pdb
+  namespace: bookmark-manager
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: bookmark-api
+---
+# PodDisruptionBudget for Frontend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: bookmark-frontend-pdb
+  namespace: bookmark-manager
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: bookmark-frontend
+---
+# PodDisruptionBudget for Snapshot Workers
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: snapshot-worker-pdb
+  namespace: bookmark-manager
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: snapshot-worker
+---
+# PodDisruptionBudget for Index Workers
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: index-worker-pdb
+  namespace: bookmark-manager
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: index-worker

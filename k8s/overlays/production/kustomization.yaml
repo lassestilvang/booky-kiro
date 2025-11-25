@@ -1,0 +1,41 @@
+# Production overlay for Bookmark Manager Platform
+# Use with: kubectl apply -k k8s/overlays/production/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bookmark-manager
+
+bases:
+  - ../../
+
+# Production-specific labels
+commonLabels:
+  environment: production
+
+# Production image tags
+images:
+  - name: bookmark-manager/api
+    newTag: v1.0.0
+  - name: bookmark-manager/frontend
+    newTag: v1.0.0
+  - name: bookmark-manager/snapshot-worker
+    newTag: v1.0.0
+  - name: bookmark-manager/index-worker
+    newTag: v1.0.0
+  - name: bookmark-manager/maintenance-worker
+    newTag: v1.0.0
+
+# Production-specific patches
+patchesStrategicMerge:
+  - replica-patch.yaml
+  - resource-patch.yaml
+
+# Production ConfigMap overrides
+configMapGenerator:
+  - name: bookmark-manager-config
+    behavior: merge
+    literals:
+      - NODE_ENV=production
+      - CORS_ORIGIN=https://bookmarks.example.com
+      - RATE_LIMIT_MAX_REQUESTS=100

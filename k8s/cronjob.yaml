@@ -1,0 +1,171 @@
+---
+# CronJob for database backups
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: bookmark-manager
+spec:
+  schedule: '0 2 * * *' # Daily at 2 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: bookmark-worker-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:15-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  BACKUP_FILE="/backups/postgres-$(date +%Y%m%d-%H%M%S).sql.gz"
+                  pg_dump -h $DB_HOST -U $DB_USER -d $DB_NAME | gzip > $BACKUP_FILE
+                  echo "Backup completed: $BACKUP_FILE"
+                  # Upload to S3 or MinIO
+                  # aws s3 cp $BACKUP_FILE s3://bucket/backups/
+              env:
+                - name: DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_HOST
+                - name: DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_NAME
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: bookmark-manager-secrets
+                      key: DB_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: bookmark-manager-secrets
+                      key: DB_PASSWORD
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+          volumes:
+            - name: backup-storage
+              emptyDir: {}
+---
+# CronJob for broken link detection
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: broken-link-scanner
+  namespace: bookmark-manager
+spec:
+  schedule: '0 3 * * 0' # Weekly on Sunday at 3 AM
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: bookmark-worker-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: scanner
+              image: bookmark-manager/maintenance-worker:latest
+              command:
+                - node
+                - dist/scripts/scan-broken-links.js
+              env:
+                - name: DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_HOST
+                - name: DB_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_PORT
+                - name: DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_NAME
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: bookmark-manager-secrets
+                      key: DB_USER
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: bookmark-manager-secrets
+                      key: DB_PASSWORD
+              resources:
+                requests:
+                  memory: '256Mi'
+                  cpu: '250m'
+                limits:
+                  memory: '512Mi'
+                  cpu: '500m'
+---
+# CronJob for duplicate detection
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: duplicate-detector
+  namespace: bookmark-manager
+spec:
+  schedule: '0 4 * * 0' # Weekly on Sunday at 4 AM
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: bookmark-worker-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: detector
+              image: bookmark-manager/maintenance-worker:latest
+              command:
+                - node
+                - dist/scripts/detect-duplicates.js
+              env:
+                - name: DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_HOST
+                - name: DB_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_PORT
+                - name: DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: bookmark-manager-config
+                      key: DB_NAME
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: bookmark-manager-secrets
+                      key: DB_USER
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: bookmark-manager-secrets
+                      key: DB_PASSWORD
+              resources:
+                requests:
+                  memory: '256Mi'
+                  cpu: '250m'
+                limits:
+                  memory: '512Mi'
+                  cpu: '500m'

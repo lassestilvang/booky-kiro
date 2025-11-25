@@ -1,0 +1,64 @@
+---
+# PostgreSQL PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: bookmark-manager
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: fast-ssd
+---
+# Redis PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: bookmark-manager
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: fast-ssd
+---
+# MeiliSearch PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: meilisearch-pvc
+  namespace: bookmark-manager
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast-ssd
+---
+# MinIO PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: bookmark-manager
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Gi
+  storageClassName: standard
+---
+# Note: StorageClass 'fast-ssd' and 'standard' should be pre-configured
+# Example for AWS EBS:
+# - fast-ssd: gp3 or io2 volumes
+# - standard: gp2 volumes
+# Example for GCP:
+# - fast-ssd: pd-ssd
+# - standard: pd-standard

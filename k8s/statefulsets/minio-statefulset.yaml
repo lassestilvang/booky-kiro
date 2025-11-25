@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: bookmark-manager
+  labels:
+    app: minio
+    component: storage
+spec:
+  serviceName: minio-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+        component: storage
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - minio server /data --console-address :9001
+          ports:
+            - name: api
+              containerPort: 9000
+              protocol: TCP
+            - name: console
+              containerPort: 9001
+              protocol: TCP
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: MINIO_SECRET_KEY
+          volumeMounts:
+            - name: minio-storage
+              mountPath: /data
+          resources:
+            requests:
+              memory: '1Gi'
+              cpu: '500m'
+            limits:
+              memory: '2Gi'
+              cpu: '1000m'
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: minio-storage
+          persistentVolumeClaim:
+            claimName: minio-pvc
+---
+# Note: For production, consider using:
+# - AWS S3
+# - Google Cloud Storage
+# - Azure Blob Storage
+# Or deploy MinIO in distributed mode (4+ nodes) for high availability

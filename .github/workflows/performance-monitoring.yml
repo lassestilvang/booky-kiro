@@ -1,0 +1,160 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Run performance tests daily at 4 AM UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  lighthouse-ci:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm --filter @bookmark-manager/frontend run build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            http://localhost:5173
+            http://localhost:5173/login
+            http://localhost:5173/dashboard
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+  bundle-size-analysis:
+    name: Bundle Size Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Analyze bundle size
+        run: |
+          cd packages/frontend
+          npx vite-bundle-visualizer --open false --filename bundle-stats.html
+
+      - name: Upload bundle analysis
+        uses: actions/upload-artifact@v3
+        with:
+          name: bundle-analysis
+          path: packages/frontend/bundle-stats.html
+          retention-days: 30
+
+      - name: Check bundle size limits
+        run: |
+          cd packages/frontend/dist
+          TOTAL_SIZE=$(du -sb . | cut -f1)
+          MAX_SIZE=$((5 * 1024 * 1024))  # 5MB limit
+
+          if [ $TOTAL_SIZE -gt $MAX_SIZE ]; then
+            echo "Bundle size ($TOTAL_SIZE bytes) exceeds limit ($MAX_SIZE bytes)"
+            exit 1
+          fi
+          echo "Bundle size: $TOTAL_SIZE bytes (within limit)"
+
+  load-testing:
+    name: Load Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run concurrent users test
+        run: k6 run --out json=concurrent-users-results.json load-tests/concurrent-users.js
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+
+      - name: Run search performance test
+        run: k6 run --out json=search-performance-results.json load-tests/search-performance.js
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+
+      - name: Run snapshot throughput test
+        run: k6 run --out json=snapshot-throughput-results.json load-tests/snapshot-throughput.js
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+
+      - name: Run API response time test
+        run: k6 run --out json=api-response-time-results.json load-tests/api-response-time.js
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: load-test-results
+          path: |
+            *-results.json
+          retention-days: 30
+
+      - name: Analyze results and create report
+        run: |
+          echo "## Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Concurrent Users Test" >> $GITHUB_STEP_SUMMARY
+          cat concurrent-users-results.json | jq '.metrics' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Search Performance Test" >> $GITHUB_STEP_SUMMARY
+          cat search-performance-results.json | jq '.metrics' >> $GITHUB_STEP_SUMMARY
+
+      - name: Check performance thresholds
+        run: |
+          # Check if 95th percentile response time is under 200ms
+          P95=$(cat api-response-time-results.json | jq '.metrics.http_req_duration.values.p95')
+          if (( $(echo "$P95 > 200" | bc -l) )); then
+            echo "Performance degradation detected: p95 response time is ${P95}ms (threshold: 200ms)"
+            exit 1
+          fi
+          echo "Performance check passed: p95 response time is ${P95}ms"

@@ -1,0 +1,54 @@
+# Production Environment Variables
+# Copy this file to terraform.tfvars and fill in the values
+
+project_name = "bookmark-manager"
+environment  = "production"
+aws_region   = "us-east-1"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+
+# Database Configuration
+db_instance_class       = "db.r6g.xlarge"
+db_allocated_storage    = 500
+db_engine_version       = "15.4"
+db_name                 = "bookmarks"
+db_create_read_replica  = true
+
+# Redis Configuration
+redis_node_type       = "cache.r6g.large"
+redis_num_cache_nodes = 3
+redis_engine_version  = "7.0"
+
+# OpenSearch Configuration
+opensearch_instance_type           = "r6g.large.search"
+opensearch_instance_count          = 3
+opensearch_dedicated_master_enabled = true
+opensearch_dedicated_master_type   = "r6g.large.search"
+opensearch_dedicated_master_count  = 3
+opensearch_ebs_volume_size         = 500
+
+# ECS Configuration
+api_image                = "123456789012.dkr.ecr.us-east-1.amazonaws.com/bookmark-manager-api:latest"
+snapshot_worker_image    = "123456789012.dkr.ecr.us-east-1.amazonaws.com/bookmark-manager-snapshot-worker:latest"
+index_worker_image       = "123456789012.dkr.ecr.us-east-1.amazonaws.com/bookmark-manager-index-worker:latest"
+maintenance_worker_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/bookmark-manager-maintenance-worker:latest"
+
+api_cpu            = 1024
+api_memory         = 2048
+api_desired_count  = 3
+api_min_capacity   = 3
+api_max_capacity   = 20
+
+worker_cpu           = 512
+worker_memory        = 1024
+worker_desired_count = 2
+
+# ALB Configuration
+certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+
+# CORS Configuration
+cors_allowed_origins = ["https://bookmarks.example.com", "https://www.bookmarks.example.com"]
+
+# Monitoring Configuration
+alert_emails = ["ops@example.com", "alerts@example.com"]

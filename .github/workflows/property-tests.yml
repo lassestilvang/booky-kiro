@@ -1,0 +1,116 @@
+name: Property-Based Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  property-tests:
+    name: Property-Based Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bookmark_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+      meilisearch:
+        image: getmeili/meilisearch:v1.5
+        env:
+          MEILI_ENV: development
+          MEILI_NO_ANALYTICS: true
+        options: >-
+          --health-cmd "curl -f http://localhost:7700/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 7700:7700
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @bookmark-manager/shared run build
+
+      - name: Run property-based tests
+        run: pnpm run test:run -- --grep "property"
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bookmark_test
+          REDIS_URL: redis://localhost:6379
+          MEILISEARCH_URL: http://localhost:7700
+          MEILISEARCH_KEY: masterKey
+          JWT_SECRET: test-secret-key-for-ci
+          NODE_ENV: test
+
+      - name: Upload property test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: property-test-results
+          path: |
+            **/test-results/
+          retention-days: 7
+
+      - name: Comment on PR with property test results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ Property-based tests failed. Please review the test results and ensure all correctness properties are satisfied.'
+            })

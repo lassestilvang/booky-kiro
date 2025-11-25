@@ -441,203 +441,204 @@ describe('PlanService Property Tests', () => {
       { numRuns: 10 }
     );
   });
-});
 
-// Feature: bookmark-manager-platform, Property 79: API-Level Feature Gating
-test('Property 79: API-Level Feature Gating - for any Pro feature, the system should enforce restrictions at the API level', async () => {
-  await fc.assert(
-    fc.asyncProperty(
-      fc.record({
-        email: fc
-          .emailAddress()
-          .map(
-            (email) =>
-              `test-${Date.now()}-${Math.random().toString(36).substring(7)}-${email}`
-          ),
-        name: fc.string({ minLength: 1, maxLength: 255 }),
-        password: fc.string({ minLength: 8, maxLength: 50 }),
-        plan: fc.constantFrom('free' as const, 'pro' as const),
-      }),
-      fc.constantFrom(
-        'Full-text search',
-        'Permanent copies',
-        'Backups',
-        'Annotations',
-        'File uploads',
-        'Highlights',
-        'Sharing',
-        'Reminders'
+  // Feature: bookmark-manager-platform, Property 79: API-Level Feature Gating
+  test('Property 79: API-Level Feature Gating - for any Pro feature, the system should enforce restrictions at the API level', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          email: fc
+            .emailAddress()
+            .map(
+              (email) =>
+                `test-${Date.now()}-${Math.random().toString(36).substring(7)}-${email}`
+            ),
+          name: fc.string({ minLength: 1, maxLength: 255 }),
+          password: fc.string({ minLength: 8, maxLength: 50 }),
+          plan: fc.constantFrom('free' as const, 'pro' as const),
+        }),
+        fc.constantFrom(
+          'Full-text search',
+          'Permanent copies',
+          'Backups',
+          'Annotations',
+          'File uploads',
+          'Highlights',
+          'Sharing',
+          'Reminders'
+        ),
+        async (userData, proFeature) => {
+          // Create user with specified plan
+          const user = await userRepository.createWithPassword(
+            userData.email,
+            userData.password,
+            userData.name,
+            userData.plan
+          );
+
+          // Test API-level enforcement
+          if (userData.plan === 'free') {
+            // Free users should be denied access to Pro features
+            try {
+              await planService.enforceProAccess(user.id, proFeature);
+              // Should not reach here for free users
+              expect(true).toBe(false);
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              if (error instanceof Error) {
+                expect(error.message).toContain('Pro feature');
+                expect(error.message).toContain(proFeature);
+              }
+            }
+
+            // Verify hasProAccess returns false
+            const hasAccess = await planService.hasProAccess(user.id);
+            expect(hasAccess).toBe(false);
+          } else {
+            // Pro users should have access to all Pro features
+            await expect(
+              planService.enforceProAccess(user.id, proFeature)
+            ).resolves.not.toThrow();
+
+            // Verify hasProAccess returns true
+            const hasAccess = await planService.hasProAccess(user.id);
+            expect(hasAccess).toBe(true);
+          }
+        }
       ),
-      async (userData, proFeature) => {
-        // Create user with specified plan
-        const user = await userRepository.createWithPassword(
-          userData.email,
-          userData.password,
-          userData.name,
-          userData.plan
-        );
+      { numRuns: 50 }
+    );
+  });
 
-        // Test API-level enforcement
-        if (userData.plan === 'free') {
-          // Free users should be denied access to Pro features
-          try {
-            await planService.enforceProAccess(user.id, proFeature);
-            // Should not reach here for free users
-            expect(true).toBe(false);
-          } catch (error) {
-            expect(error).toBeInstanceOf(Error);
-            if (error instanceof Error) {
-              expect(error.message).toContain('Pro feature');
-              expect(error.message).toContain(proFeature);
+  test('Property 79 (Edge Case): API-level gating should handle all Pro features consistently', async () => {
+    const proFeatures = [
+      'Full-text search',
+      'Permanent copies',
+      'Backups',
+      'Annotations',
+      'File uploads',
+      'Highlights',
+      'Sharing',
+      'Reminders',
+      'Bulk operations',
+      'Custom ordering',
+    ];
+
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          email: fc
+            .emailAddress()
+            .map(
+              (email) =>
+                `test-${Date.now()}-${Math.random().toString(36).substring(7)}-${email}`
+            ),
+          name: fc.string({ minLength: 1, maxLength: 255 }),
+          password: fc.string({ minLength: 8, maxLength: 50 }),
+        }),
+        async (userData) => {
+          // Create a free tier user
+          const user = await userRepository.createWithPassword(
+            userData.email,
+            userData.password,
+            userData.name,
+            'free'
+          );
+
+          // Test that ALL Pro features are consistently gated
+          for (const feature of proFeatures) {
+            try {
+              await planService.enforceProAccess(user.id, feature);
+              // Should not reach here
+              expect(true).toBe(false);
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              if (error instanceof Error) {
+                expect(error.message).toContain('Pro feature');
+              }
             }
           }
 
-          // Verify hasProAccess returns false
-          const hasAccess = await planService.hasProAccess(user.id);
-          expect(hasAccess).toBe(false);
-        } else {
-          // Pro users should have access to all Pro features
-          await expect(
-            planService.enforceProAccess(user.id, proFeature)
-          ).resolves.not.toThrow();
+          // Upgrade to Pro
+          await planService.changePlan(user.id, 'pro');
 
-          // Verify hasProAccess returns true
-          const hasAccess = await planService.hasProAccess(user.id);
-          expect(hasAccess).toBe(true);
-        }
-      }
-    ),
-    { numRuns: 50 }
-  );
-});
-
-test('Property 79 (Edge Case): API-level gating should handle all Pro features consistently', async () => {
-  const proFeatures = [
-    'Full-text search',
-    'Permanent copies',
-    'Backups',
-    'Annotations',
-    'File uploads',
-    'Highlights',
-    'Sharing',
-    'Reminders',
-    'Bulk operations',
-    'Custom ordering',
-  ];
-
-  await fc.assert(
-    fc.asyncProperty(
-      fc.record({
-        email: fc
-          .emailAddress()
-          .map(
-            (email) =>
-              `test-${Date.now()}-${Math.random().toString(36).substring(7)}-${email}`
-          ),
-        name: fc.string({ minLength: 1, maxLength: 255 }),
-        password: fc.string({ minLength: 8, maxLength: 50 }),
-      }),
-      async (userData) => {
-        // Create a free tier user
-        const user = await userRepository.createWithPassword(
-          userData.email,
-          userData.password,
-          userData.name,
-          'free'
-        );
-
-        // Test that ALL Pro features are consistently gated
-        for (const feature of proFeatures) {
-          try {
-            await planService.enforceProAccess(user.id, feature);
-            // Should not reach here
-            expect(true).toBe(false);
-          } catch (error) {
-            expect(error).toBeInstanceOf(Error);
-            if (error instanceof Error) {
-              expect(error.message).toContain('Pro feature');
-            }
+          // Verify ALL Pro features are now accessible
+          for (const feature of proFeatures) {
+            await expect(
+              planService.enforceProAccess(user.id, feature)
+            ).resolves.not.toThrow();
           }
         }
+      ),
+      { numRuns: 10 }
+    );
+  });
 
-        // Upgrade to Pro
-        await planService.upgradeToPro(user.id);
+  test('Property 79 (Edge Case): API-level gating should prevent feature access even with direct API calls', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          email: fc
+            .emailAddress()
+            .map(
+              (email) =>
+                `test-${Date.now()}-${Math.random().toString(36).substring(7)}-${email}`
+            ),
+          name: fc.string({ minLength: 1, maxLength: 255 }),
+          password: fc.string({ minLength: 8, maxLength: 50 }),
+        }),
+        async (userData) => {
+          // Create a free tier user
+          const user = await userRepository.createWithPassword(
+            userData.email,
+            userData.password,
+            userData.name,
+            'free'
+          );
 
-        // Verify ALL Pro features are now accessible
-        for (const feature of proFeatures) {
-          await expect(
-            planService.enforceProAccess(user.id, feature)
-          ).resolves.not.toThrow();
-        }
-      }
-    ),
-    { numRuns: 10 }
-  );
-});
+          // Attempt to access Pro features through different entry points
+          const featureChecks = [
+            {
+              feature: 'Full-text search',
+              check: () =>
+                planService.enforceProAccess(user.id, 'Full-text search'),
+            },
+            {
+              feature: 'Backups',
+              check: () => planService.enforceProAccess(user.id, 'Backups'),
+            },
+            {
+              feature: 'File uploads',
+              check: () =>
+                planService.enforceProAccess(user.id, 'File uploads'),
+            },
+          ];
 
-test('Property 79 (Edge Case): API-level gating should prevent feature access even with direct API calls', async () => {
-  await fc.assert(
-    fc.asyncProperty(
-      fc.record({
-        email: fc
-          .emailAddress()
-          .map(
-            (email) =>
-              `test-${Date.now()}-${Math.random().toString(36).substring(7)}-${email}`
-          ),
-        name: fc.string({ minLength: 1, maxLength: 255 }),
-        password: fc.string({ minLength: 8, maxLength: 50 }),
-      }),
-      async (userData) => {
-        // Create a free tier user
-        const user = await userRepository.createWithPassword(
-          userData.email,
-          userData.password,
-          userData.name,
-          'free'
-        );
-
-        // Attempt to access Pro features through different entry points
-        const featureChecks = [
-          {
-            feature: 'Full-text search',
-            check: () =>
-              planService.enforceProAccess(user.id, 'Full-text search'),
-          },
-          {
-            feature: 'Backups',
-            check: () => planService.enforceProAccess(user.id, 'Backups'),
-          },
-          {
-            feature: 'File uploads',
-            check: () => planService.enforceProAccess(user.id, 'File uploads'),
-          },
-        ];
-
-        // All checks should fail for free users
-        for (const { feature, check } of featureChecks) {
-          try {
-            await check();
-            // Should not reach here
-            expect(true).toBe(false);
-          } catch (error) {
-            expect(error).toBeInstanceOf(Error);
-            if (error instanceof Error) {
-              expect(error.message).toContain('Pro feature');
+          // All checks should fail for free users
+          for (const { check } of featureChecks) {
+            try {
+              await check();
+              // Should not reach here
+              expect(true).toBe(false);
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              if (error instanceof Error) {
+                expect(error.message).toContain('Pro feature');
+              }
             }
           }
+
+          // Verify the enforcement is consistent across multiple calls
+          const hasAccess1 = await planService.hasProAccess(user.id);
+          const hasAccess2 = await planService.hasProAccess(user.id);
+          const hasAccess3 = await planService.hasProAccess(user.id);
+
+          expect(hasAccess1).toBe(false);
+          expect(hasAccess2).toBe(false);
+          expect(hasAccess3).toBe(false);
         }
-
-        // Verify the enforcement is consistent across multiple calls
-        const hasAccess1 = await planService.hasProAccess(user.id);
-        const hasAccess2 = await planService.hasProAccess(user.id);
-        const hasAccess3 = await planService.hasProAccess(user.id);
-
-        expect(hasAccess1).toBe(false);
-        expect(hasAccess2).toBe(false);
-        expect(hasAccess3).toBe(false);
-      }
-    ),
-    { numRuns: 20 }
-  );
+      ),
+      { numRuns: 20 }
+    );
+  });
 });

@@ -1,0 +1,487 @@
+{
+  "info": {
+    "name": "Bookmark Manager API",
+    "description": "Complete API collection for the Bookmark Manager Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/v1",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword123\",\n  \"name\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', response.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookmarks",
+      "item": [
+        {
+          "name": "List Bookmarks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookmarks?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["bookmarks"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "collection_id",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "tags",
+                  "value": "javascript,react",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Bookmark",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://example.com/article\",\n  \"title\": \"Interesting Article\",\n  \"excerpt\": \"This is a great article about...\",\n  \"tags\": [\"javascript\", \"web-development\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/bookmarks",
+              "host": ["{{base_url}}"],
+              "path": ["bookmarks"]
+            }
+          }
+        },
+        {
+          "name": "Get Bookmark",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookmarks/:id",
+              "host": ["{{base_url}}"],
+              "path": ["bookmarks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Bookmark",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Title\",\n  \"tags\": [\"javascript\", \"react\", \"typescript\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/bookmarks/:id",
+              "host": ["{{base_url}}"],
+              "path": ["bookmarks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Bookmark",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookmarks/:id",
+              "host": ["{{base_url}}"],
+              "path": ["bookmarks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Operations (Pro)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookmark_ids\": [\n    \"550e8400-e29b-41d4-a716-446655440000\",\n    \"660e8400-e29b-41d4-a716-446655440001\"\n  ],\n  \"action\": \"add_tags\",\n  \"params\": {\n    \"tags\": [\"important\", \"read-later\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/bookmarks/bulk",
+              "host": ["{{base_url}}"],
+              "path": ["bookmarks", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Collections",
+      "item": [
+        {
+          "name": "List Collections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/collections",
+              "host": ["{{base_url}}"],
+              "path": ["collections"]
+            }
+          }
+        },
+        {
+          "name": "Create Collection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Web Development\",\n  \"icon\": \"code\",\n  \"parent_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/collections",
+              "host": ["{{base_url}}"],
+              "path": ["collections"]
+            }
+          }
+        },
+        {
+          "name": "Share Collection (Pro)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"target-user-uuid\",\n  \"role\": \"editor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/collections/:id/share",
+              "host": ["{{base_url}}"],
+              "path": ["collections", ":id", "share"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Search Bookmarks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/search?q=javascript&fulltext=true&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "javascript"
+                },
+                {
+                  "key": "fulltext",
+                  "value": "true"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "tags",
+                  "value": "react",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "List Tags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tags",
+              "host": ["{{base_url}}"],
+              "path": ["tags"]
+            }
+          }
+        },
+        {
+          "name": "Merge Tags",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_tag_ids\": [\n    \"tag1-uuid\",\n    \"tag2-uuid\"\n  ],\n  \"target_tag_id\": \"tag3-uuid\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tags/merge",
+              "host": ["{{base_url}}"],
+              "path": ["tags", "merge"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Highlights (Pro)",
+      "item": [
+        {
+          "name": "Create Highlight",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookmark_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"text_selected\": \"Important passage from the article\",\n  \"color\": \"#FFFF00\",\n  \"annotation_md\": \"This is **very important**\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/highlights",
+              "host": ["{{base_url}}"],
+              "path": ["highlights"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Import/Export",
+      "item": [
+        {
+          "name": "Export Collection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/export/:collection_id?format=json",
+              "host": ["{{base_url}}"],
+              "path": ["export", ":collection_id"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "collection_id",
+                  "value": "550e8400-e29b-41d4-a716-446655440000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

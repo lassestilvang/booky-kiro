@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookmark-frontend-service
+  namespace: bookmark-manager
+  labels:
+    app: bookmark-frontend
+    component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: bookmark-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  sessionAffinity: None

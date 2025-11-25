@@ -1,0 +1,120 @@
+# PrometheusRule for alerting
+# Requires Prometheus Operator to be installed in the cluster
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: bookmark-manager-alerts
+  namespace: bookmark-manager
+  labels:
+    app: bookmark-manager
+spec:
+  groups:
+    - name: bookmark-manager.rules
+      interval: 30s
+      rules:
+        # API availability alert
+        - alert: APIHighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{job="bookmark-api",status=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{job="bookmark-api"}[5m]))
+            ) > 0.01
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: 'High error rate on API'
+            description: 'API error rate is {{ $value | humanizePercentage }} (threshold: 1%)'
+
+        # API latency alert
+        - alert: APIHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{job="bookmark-api"}[5m])) by (le)
+            ) > 0.2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'High API latency'
+            description: '95th percentile latency is {{ $value }}s (threshold: 0.2s)'
+
+        # Database connection pool alert
+        - alert: DatabaseConnectionPoolExhausted
+          expr: |
+            (
+              sum(pg_stat_database_numbackends{datname="bookmark_manager"})
+              /
+              sum(pg_settings_max_connections)
+            ) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Database connection pool near exhaustion'
+            description: 'Connection pool usage is {{ $value | humanizePercentage }}'
+
+        # Redis memory alert
+        - alert: RedisHighMemoryUsage
+          expr: |
+            (
+              redis_memory_used_bytes
+              /
+              redis_memory_max_bytes
+            ) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Redis memory usage high'
+            description: 'Redis memory usage is {{ $value | humanizePercentage }}'
+
+        # Pod restart alert
+        - alert: PodRestartingFrequently
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="bookmark-manager"}[1h]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Pod restarting frequently'
+            description: 'Pod {{ $labels.pod }} is restarting frequently'
+
+        # Disk space alert
+        - alert: PersistentVolumeLowSpace
+          expr: |
+            (
+              kubelet_volume_stats_available_bytes{namespace="bookmark-manager"}
+              /
+              kubelet_volume_stats_capacity_bytes{namespace="bookmark-manager"}
+            ) < 0.2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Persistent volume low on space'
+            description: 'PVC {{ $labels.persistentvolumeclaim }} has {{ $value | humanizePercentage }} space remaining'
+
+        # Worker queue depth alert
+        - alert: WorkerQueueDepthHigh
+          expr: |
+            bullmq_queue_waiting{queue=~"snapshot|index"} > 1000
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Worker queue depth high'
+            description: 'Queue {{ $labels.queue }} has {{ $value }} waiting jobs'
+
+        # Search engine health alert
+        - alert: SearchEngineDown
+          expr: |
+            up{job="meilisearch"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: 'Search engine is down'
+            description: 'MeiliSearch is not responding'

@@ -1,0 +1,342 @@
+# Docker Compose for Production Deployment
+# This file includes production-ready configurations with resource limits,
+# health checks, and proper restart policies.
+
+services:
+  # Infrastructure Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookmark-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-bookmark_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bookmark_pass}
+      POSTGRES_DB: ${DB_NAME:-bookmark_db}
+      POSTGRES_INITDB_ARGS: '-E UTF8 --locale=en_US.UTF-8'
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-bookmark_user}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    container_name: bookmark-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.5
+    container_name: bookmark-meilisearch
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-masterKey123}
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: 'true'
+      MEILI_HTTP_PAYLOAD_SIZE_LIMIT: 104857600
+    ports:
+      - '7700:7700'
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--spider',
+          'http://localhost:7700/health',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  minio:
+    image: minio/minio:latest
+    container_name: bookmark-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_CONSOLE_URL:-http://localhost:9001}
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # Application Services
+  api:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+      args:
+        NODE_ENV: production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-bookmark_db}
+      DB_USER: ${DB_USER:-bookmark_user}
+      DB_PASSWORD: ${DB_PASSWORD:-bookmark_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-masterKey123}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_USE_SSL: 'false'
+      MINIO_BUCKET: bookmarks
+      MINIO_SNAPSHOT_BUCKET: snapshots
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  snapshot-worker:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile.snapshot-worker
+      args:
+        NODE_ENV: production
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-bookmark_db}
+      DB_USER: ${DB_USER:-bookmark_user}
+      DB_PASSWORD: ${DB_PASSWORD:-bookmark_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_USE_SSL: 'false'
+      MINIO_SNAPSHOT_BUCKET: snapshots
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  index-worker:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile.index-worker
+      args:
+        NODE_ENV: production
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-bookmark_db}
+      DB_USER: ${DB_USER:-bookmark_user}
+      DB_PASSWORD: ${DB_PASSWORD:-bookmark_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-masterKey123}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_USE_SSL: 'false'
+      MINIO_SNAPSHOT_BUCKET: snapshots
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  maintenance-worker:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile.maintenance-worker
+      args:
+        NODE_ENV: production
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-bookmark_db}
+      DB_USER: ${DB_USER:-bookmark_user}
+      DB_PASSWORD: ${DB_PASSWORD:-bookmark_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      args:
+        VITE_API_URL: ${API_URL:-http://localhost:3000}
+    environment:
+      VITE_API_URL: ${API_URL:-http://localhost:3000}
+    ports:
+      - '8080:80'
+    depends_on:
+      - api
+    networks:
+      - bookmark-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  meilisearch_data:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  bookmark-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

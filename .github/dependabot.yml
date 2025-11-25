@@ -1,0 +1,119 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+    open-pull-requests-limit: 10
+    reviewers:
+      - 'bookmark-manager-team'
+    labels:
+      - 'dependencies'
+      - 'automated'
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'
+    groups:
+      # Group all patch updates together
+      patch-updates:
+        patterns:
+          - '*'
+        update-types:
+          - 'patch'
+      # Group all minor updates together
+      minor-updates:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+      # Group development dependencies
+      dev-dependencies:
+        dependency-type: 'development'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Backend package
+  - package-ecosystem: 'npm'
+    directory: '/packages/backend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'backend'
+
+  # Frontend package
+  - package-ecosystem: 'npm'
+    directory: '/packages/frontend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'frontend'
+
+  # Extension package
+  - package-ecosystem: 'npm'
+    directory: '/packages/extension'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'extension'
+
+  # Shared package
+  - package-ecosystem: 'npm'
+    directory: '/packages/shared'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'shared'
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+    commit-message:
+      prefix: 'ci'
+
+  # Docker
+  - package-ecosystem: 'docker'
+    directory: '/packages/backend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'docker'
+    commit-message:
+      prefix: 'build'
+
+  - package-ecosystem: 'docker'
+    directory: '/packages/frontend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'docker'
+    commit-message:
+      prefix: 'build'

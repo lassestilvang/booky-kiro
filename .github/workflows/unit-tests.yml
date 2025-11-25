@@ -1,0 +1,99 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bookmark_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @bookmark-manager/shared run build
+
+      - name: Run unit tests
+        run: pnpm run test:run
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bookmark_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key-for-ci
+          NODE_ENV: test
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: |
+            **/coverage/
+          retention-days: 7
+
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f packages/backend/coverage/coverage-summary.json ]; then
+            echo "### Backend Coverage" >> $GITHUB_STEP_SUMMARY
+            cat packages/backend/coverage/coverage-summary.json >> $GITHUB_STEP_SUMMARY
+          fi

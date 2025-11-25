@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: meilisearch
+  namespace: bookmark-manager
+  labels:
+    app: meilisearch
+    component: search
+spec:
+  serviceName: meilisearch-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meilisearch
+  template:
+    metadata:
+      labels:
+        app: meilisearch
+        component: search
+    spec:
+      containers:
+        - name: meilisearch
+          image: getmeili/meilisearch:v1.5
+          ports:
+            - name: http
+              containerPort: 7700
+              protocol: TCP
+          env:
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: MEILISEARCH_MASTER_KEY
+            - name: MEILI_ENV
+              value: 'production'
+            - name: MEILI_DB_PATH
+              value: '/meili_data/data.ms'
+            - name: MEILI_HTTP_ADDR
+              value: '0.0.0.0:7700'
+            - name: MEILI_MAX_INDEXING_MEMORY
+              value: '2Gb'
+          volumeMounts:
+            - name: meilisearch-storage
+              mountPath: /meili_data
+          resources:
+            requests:
+              memory: '2Gi'
+              cpu: '1000m'
+            limits:
+              memory: '4Gi'
+              cpu: '2000m'
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: meilisearch-storage
+          persistentVolumeClaim:
+            claimName: meilisearch-pvc
+---
+# Note: For production with high availability, consider:
+# - Elasticsearch cluster (3+ nodes)
+# - AWS OpenSearch Service
+# - Elastic Cloud
+# MeiliSearch is single-node by design, so for HA use Elasticsearch

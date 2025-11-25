@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Run all CI checks in parallel for faster feedback
+  lint-and-typecheck:
+    name: Lint & Type Check
+    uses: ./.github/workflows/lint-and-typecheck.yml
+
+  unit-tests:
+    name: Unit Tests
+    uses: ./.github/workflows/unit-tests.yml
+
+  property-tests:
+    name: Property-Based Tests
+    uses: ./.github/workflows/property-tests.yml
+
+  integration-tests:
+    name: Integration Tests
+    uses: ./.github/workflows/integration-tests.yml
+
+  # Build Docker images for PRs to main
+  build-images:
+    name: Build Docker Images
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    uses: ./.github/workflows/build-docker-images.yml
+
+  # Run E2E tests only for PRs to main or pushes to main/develop
+  e2e-tests:
+    name: E2E Tests
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.base_ref == 'main')
+    uses: ./.github/workflows/e2e-tests.yml
+    needs: [lint-and-typecheck, unit-tests, property-tests, integration-tests]
+
+  # Security scans
+  security-scan:
+    name: Security Scan
+    uses: ./.github/workflows/security-scan.yml
+
+  # Final status check
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs:
+      [
+        lint-and-typecheck,
+        unit-tests,
+        property-tests,
+        integration-tests,
+        security-scan,
+      ]
+    if: always()
+
+    steps:
+      - name: Check CI status
+        run: |
+          if [ "${{ needs.lint-and-typecheck.result }}" != "success" ] || \
+             [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.property-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.security-scan.result }}" != "success" ]; then
+            echo "CI checks failed"
+            exit 1
+          fi
+          echo "All CI checks passed ✅"
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ All CI checks passed! This PR is ready for review.'
+            })

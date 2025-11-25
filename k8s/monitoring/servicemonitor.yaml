@@ -1,0 +1,50 @@
+# ServiceMonitor for Prometheus Operator
+# Requires Prometheus Operator to be installed in the cluster
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: bookmark-api-metrics
+  namespace: bookmark-manager
+  labels:
+    app: bookmark-api
+spec:
+  selector:
+    matchLabels:
+      app: bookmark-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-metrics
+  namespace: bookmark-manager
+  labels:
+    app: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  endpoints:
+    - port: postgres
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-metrics
+  namespace: bookmark-manager
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  endpoints:
+    - port: redis
+      interval: 30s

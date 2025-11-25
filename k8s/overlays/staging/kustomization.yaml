@@ -1,0 +1,40 @@
+# Staging overlay for Bookmark Manager Platform
+# Use with: kubectl apply -k k8s/overlays/staging/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bookmark-manager-staging
+
+bases:
+  - ../../
+
+# Staging-specific labels
+commonLabels:
+  environment: staging
+
+# Staging image tags (use latest or specific staging tags)
+images:
+  - name: bookmark-manager/api
+    newTag: staging
+  - name: bookmark-manager/frontend
+    newTag: staging
+  - name: bookmark-manager/snapshot-worker
+    newTag: staging
+  - name: bookmark-manager/index-worker
+    newTag: staging
+  - name: bookmark-manager/maintenance-worker
+    newTag: staging
+
+# Staging-specific patches
+patchesStrategicMerge:
+  - replica-patch.yaml
+
+# Staging ConfigMap overrides
+configMapGenerator:
+  - name: bookmark-manager-config
+    behavior: merge
+    literals:
+      - NODE_ENV=staging
+      - CORS_ORIGIN=https://staging.bookmarks.example.com
+      - RATE_LIMIT_MAX_REQUESTS=200

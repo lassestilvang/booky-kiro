@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookmark-api-service
+  namespace: bookmark-manager
+  labels:
+    app: bookmark-api
+    component: api
+spec:
+  type: ClusterIP
+  selector:
+    app: bookmark-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP
+  sessionAffinity: None
+---
+# Headless service for StatefulSet pod discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookmark-api-headless
+  namespace: bookmark-manager
+  labels:
+    app: bookmark-api
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: bookmark-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP

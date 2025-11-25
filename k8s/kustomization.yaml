@@ -1,0 +1,83 @@
+# Kustomization file for Bookmark Manager Platform
+# Use with: kubectl apply -k k8s/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: bookmark-manager
+
+resources:
+  # Namespace
+  - namespace.yaml
+
+  # Configuration
+  - configmap.yaml
+  - secrets.yaml
+
+  # Storage
+  - persistentvolumes.yaml
+
+  # StatefulSets
+  - statefulsets/postgres-statefulset.yaml
+  - statefulsets/redis-statefulset.yaml
+  - statefulsets/meilisearch-statefulset.yaml
+  - statefulsets/minio-statefulset.yaml
+
+  # Services
+  - services/api-service.yaml
+  - services/frontend-service.yaml
+  - services/postgres-service.yaml
+  - services/redis-service.yaml
+  - services/meilisearch-service.yaml
+  - services/minio-service.yaml
+
+  # Deployments
+  - deployments/api-deployment.yaml
+  - deployments/frontend-deployment.yaml
+  - deployments/snapshot-worker-deployment.yaml
+  - deployments/index-worker-deployment.yaml
+  - deployments/maintenance-worker-deployment.yaml
+
+  # Supporting Resources
+  - serviceaccount.yaml
+  - networkpolicy.yaml
+  - poddisruptionbudget.yaml
+  - cronjob.yaml
+
+  # Ingress
+  - ingress.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: bookmark-manager
+  app.kubernetes.io/version: '1.0.0'
+  app.kubernetes.io/managed-by: kustomize
+
+# Images to use (can be overridden per environment)
+images:
+  - name: bookmark-manager/api
+    newTag: latest
+  - name: bookmark-manager/frontend
+    newTag: latest
+  - name: bookmark-manager/snapshot-worker
+    newTag: latest
+  - name: bookmark-manager/index-worker
+    newTag: latest
+  - name: bookmark-manager/maintenance-worker
+    newTag: latest
+# ConfigMap generator (alternative to configmap.yaml)
+# configMapGenerator:
+#   - name: bookmark-manager-config
+#     literals:
+#       - NODE_ENV=production
+#       - API_PORT=3000
+
+# Secret generator (alternative to secrets.yaml)
+# secretGenerator:
+#   - name: bookmark-manager-secrets
+#     literals:
+#       - DB_PASSWORD=changeme
+
+# Patches for environment-specific overrides
+# patchesStrategicMerge:
+#   - overlays/production/patch.yaml

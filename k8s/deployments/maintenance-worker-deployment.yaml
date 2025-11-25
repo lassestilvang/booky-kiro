@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maintenance-worker
+  namespace: bookmark-manager
+  labels:
+    app: maintenance-worker
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: maintenance-worker
+  template:
+    metadata:
+      labels:
+        app: maintenance-worker
+        component: worker
+    spec:
+      containers:
+        - name: maintenance-worker
+          image: bookmark-manager/maintenance-worker:latest
+          imagePullPolicy: Always
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: NODE_ENV
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: DB_PASSWORD
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookmark-manager-secrets
+                  key: REDIS_PASSWORD
+            - name: MAINTENANCE_SCHEDULE
+              valueFrom:
+                configMapKeyRef:
+                  name: bookmark-manager-config
+                  key: MAINTENANCE_SCHEDULE
+          resources:
+            requests:
+              memory: '256Mi'
+              cpu: '250m'
+            limits:
+              memory: '512Mi'
+              cpu: '500m'
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pgrep -f maintenance-worker
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3

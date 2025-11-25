@@ -1,0 +1,183 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run E2E tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: Start Docker services
+        run: docker-compose up -d
+        env:
+          COMPOSE_FILE: docker-compose.yml
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 30
+          docker-compose ps
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Run database migrations
+        run: pnpm --filter @bookmark-manager/backend run migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bookmark_dev
+
+      - name: Start application servers
+        run: |
+          pnpm --filter @bookmark-manager/backend run dev &
+          pnpm --filter @bookmark-manager/frontend run dev &
+          sleep 15
+
+      - name: Run E2E tests
+        run: pnpm run test:e2e
+        env:
+          BASE_URL: http://localhost:5173
+          API_URL: http://localhost:3000
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-videos
+          path: test-results/
+          retention-days: 7
+
+      - name: Stop Docker services
+        if: always()
+        run: docker-compose down
+
+      - name: Comment on PR with E2E results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ E2E tests failed. Please review the Playwright report in the artifacts.'
+            })
+
+  e2e-tests-matrix:
+    name: E2E Tests (Browser Matrix)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Start Docker services
+        run: docker-compose up -d
+
+      - name: Wait for services
+        run: sleep 30
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Run database migrations
+        run: pnpm --filter @bookmark-manager/backend run migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bookmark_dev
+
+      - name: Start application servers
+        run: |
+          pnpm --filter @bookmark-manager/backend run dev &
+          pnpm --filter @bookmark-manager/frontend run dev &
+          sleep 15
+
+      - name: Run E2E tests on ${{ matrix.browser }}
+        run: npx playwright test --project=${{ matrix.browser }}
+        env:
+          BASE_URL: http://localhost:5173
+          API_URL: http://localhost:3000
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Stop Docker services
+        if: always()
+        run: docker-compose down

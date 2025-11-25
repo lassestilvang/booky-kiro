@@ -1,0 +1,29 @@
+# Staging replica count overrides (smaller than production)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookmark-api
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookmark-frontend
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snapshot-worker
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: index-worker
+spec:
+  replicas: 1

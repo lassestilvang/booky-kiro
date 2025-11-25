@@ -1,0 +1,249 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  determine-environment:
+    name: Determine Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+    steps:
+      - name: Set environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    environment: ${{ needs.determine-environment.outputs.environment }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Set image tags
+        id: image-tags
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG=${{ github.sha }}
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Update Kubernetes manifests
+        run: |
+          cd k8s/overlays/${{ needs.determine-environment.outputs.environment }}
+
+          # Update image tags in kustomization
+          kustomize edit set image \
+            api=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:${{ steps.image-tags.outputs.tag }} \
+            frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/frontend:${{ steps.image-tags.outputs.tag }} \
+            snapshot-worker=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/snapshot-worker:${{ steps.image-tags.outputs.tag }} \
+            index-worker=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/index-worker:${{ steps.image-tags.outputs.tag }} \
+            maintenance-worker=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/maintenance-worker:${{ steps.image-tags.outputs.tag }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -k k8s/overlays/${{ needs.determine-environment.outputs.environment }}
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/api -n bookmark-manager --timeout=5m
+          kubectl rollout status deployment/frontend -n bookmark-manager --timeout=5m
+          kubectl rollout status deployment/snapshot-worker -n bookmark-manager --timeout=5m
+          kubectl rollout status deployment/index-worker -n bookmark-manager --timeout=5m
+          kubectl rollout status deployment/maintenance-worker -n bookmark-manager --timeout=5m
+
+      - name: Run database migrations
+        run: |
+          kubectl run migration-job-${{ github.sha }} \
+            --image=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:${{ steps.image-tags.outputs.tag }} \
+            --restart=Never \
+            --namespace=bookmark-manager \
+            --env="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --command -- npm run migrate
+
+          kubectl wait --for=condition=complete --timeout=5m \
+            job/migration-job-${{ github.sha }} -n bookmark-manager
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n bookmark-manager
+          kubectl get services -n bookmark-manager
+
+      - name: Notify deployment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: 'success',
+              environment_url: '${{ secrets.APP_URL }}',
+              description: 'Deployment to ${{ needs.determine-environment.outputs.environment }} successful'
+            })
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: 'failure',
+              description: 'Deployment to ${{ needs.determine-environment.outputs.environment }} failed'
+            })
+
+  deploy-terraform:
+    name: Deploy Infrastructure (Terraform)
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'production'
+    environment: production
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: |
+          cd terraform/environments/production
+          terraform init
+
+      - name: Terraform Plan
+        run: |
+          cd terraform/environments/production
+          terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cd terraform/environments/production
+          terraform apply -auto-approve tfplan
+
+      - name: Output infrastructure details
+        run: |
+          cd terraform/environments/production
+          terraform output
+
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [determine-environment, deploy-kubernetes]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run smoke tests
+        run: k6 run --vus 10 --duration 30s load-tests/concurrent-users.js
+        env:
+          API_URL: ${{ secrets.APP_URL }}
+
+      - name: Health check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.APP_URL }}/health)
+          if [ $response -ne 200 ]; then
+            echo "Health check failed with status $response"
+            exit 1
+          fi
+          echo "Health check passed"
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [determine-environment, deploy-kubernetes, smoke-tests]
+    if: failure()
+    environment: ${{ needs.determine-environment.outputs.environment }}
+
+    steps:
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Rollback deployment
+        run: |
+          kubectl rollout undo deployment/api -n bookmark-manager
+          kubectl rollout undo deployment/frontend -n bookmark-manager
+          kubectl rollout undo deployment/snapshot-worker -n bookmark-manager
+          kubectl rollout undo deployment/index-worker -n bookmark-manager
+          kubectl rollout undo deployment/maintenance-worker -n bookmark-manager
+
+      - name: Notify rollback
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Deployment Rollback - ${{ needs.determine-environment.outputs.environment }}',
+              body: 'Deployment to ${{ needs.determine-environment.outputs.environment }} failed and was rolled back.\n\nCommit: ${{ github.sha }}\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+              labels: ['deployment', 'rollback', 'urgent']
+            })

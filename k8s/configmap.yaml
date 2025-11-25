@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bookmark-manager-config
+  namespace: bookmark-manager
+data:
+  # Database Configuration
+  DB_HOST: 'postgres-service'
+  DB_PORT: '5432'
+  DB_NAME: 'bookmark_manager'
+
+  # Redis Configuration
+  REDIS_HOST: 'redis-service'
+  REDIS_PORT: '6379'
+
+  # MeiliSearch Configuration
+  MEILISEARCH_HOST: 'http://meilisearch-service:7700'
+
+  # MinIO Configuration
+  MINIO_ENDPOINT: 'minio-service:9000'
+  MINIO_BUCKET: 'bookmarks'
+  MINIO_USE_SSL: 'false'
+
+  # Application Configuration
+  NODE_ENV: 'production'
+  API_PORT: '3000'
+  CORS_ORIGIN: 'https://bookmarks.example.com'
+
+  # JWT Configuration
+  JWT_EXPIRES_IN: '15m'
+  JWT_REFRESH_EXPIRES_IN: '7d'
+
+  # Rate Limiting
+  RATE_LIMIT_WINDOW_MS: '900000'
+  RATE_LIMIT_MAX_REQUESTS: '100'
+
+  # Worker Configuration
+  SNAPSHOT_CONCURRENCY: '5'
+  INDEX_CONCURRENCY: '10'
+  MAINTENANCE_SCHEDULE: '0 2 * * *'

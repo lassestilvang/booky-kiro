@@ -1,0 +1,29 @@
+# Production replica count overrides
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookmark-api
+spec:
+  replicas: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookmark-frontend
+spec:
+  replicas: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snapshot-worker
+spec:
+  replicas: 4
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: index-worker
+spec:
+  replicas: 3
