@@ -107,7 +107,7 @@ jobs:
 
       - name: Notify deployment success
         if: success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.repos.createDeploymentStatus({
@@ -121,7 +121,7 @@ jobs:
 
       - name: Notify deployment failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.repos.createDeploymentStatus({
@@ -237,7 +237,7 @@ jobs:
           kubectl rollout undo deployment/maintenance-worker -n bookmark-manager
 
       - name: Notify rollback
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.issues.create({
