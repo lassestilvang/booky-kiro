@@ -63,68 +63,85 @@ describe('Collection Service - Property-Based Tests', () => {
           }),
           { minLength: 1, maxLength: 10 }
         ),
-        fc.boolean(), // deleteBookmarks flag
-        async (ownerId, collectionId, bookmarksData, deleteBookmarks) => {
-          // Create owner user
-          await testPool.query(
-            `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, 'free', NOW(), NOW())`,
-            [ownerId, `owner-${ownerId}@test.com`, 'Owner', 'hash']
-          );
+        fc.boolean(), // moveToDefault flag
+        async (ownerId, collectionId, bookmarksData, moveToDefault) => {
+          // Ensure ownerId and collectionId are different to avoid constraint violations
+          fc.pre(ownerId !== collectionId);
 
-          // Create collection
-          await testPool.query(
-            `INSERT INTO collections (id, owner_id, title, icon, is_public, sort_order, created_at, updated_at)
+          try {
+            // Create owner user (use INSERT ... ON CONFLICT to handle duplicates)
+            await testPool.query(
+              `INSERT INTO users (id, email, name, password_hash, plan, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, 'free', NOW(), NOW())
+               ON CONFLICT (id) DO NOTHING`,
+              [ownerId, `owner-${ownerId}@test.com`, 'Owner', 'hash']
+            );
+
+            // Create collection
+            await testPool.query(
+              `INSERT INTO collections (id, owner_id, title, icon, is_public, sort_order, created_at, updated_at)
              VALUES ($1, $2, $3, $4, false, 0, NOW(), NOW())`,
-            [collectionId, ownerId, 'Test Collection', '📁']
-          );
+              [collectionId, ownerId, 'Test Collection', '📁']
+            );
 
-          // Create bookmarks in the collection
-          const bookmarkIds: string[] = [];
-          for (const bookmarkData of bookmarksData) {
-            const result = await testPool.query(
-              `INSERT INTO bookmarks (owner_id, collection_id, title, url, type, domain, created_at, updated_at)
+            // Create bookmarks in the collection
+            const bookmarkIds: string[] = [];
+            for (const bookmarkData of bookmarksData) {
+              const result = await testPool.query(
+                `INSERT INTO bookmarks (owner_id, collection_id, title, url, type, domain, created_at, updated_at)
                VALUES ($1, $2, $3, $4, 'article', 'example.com', NOW(), NOW())
                RETURNING id`,
-              [ownerId, collectionId, bookmarkData.title, bookmarkData.url]
+                [ownerId, collectionId, bookmarkData.title, bookmarkData.url]
+              );
+              bookmarkIds.push(result.rows[0].id);
+            }
+
+            // Delete the collection
+            await collectionService.deleteCollection(
+              collectionId,
+              ownerId,
+              moveToDefault
             );
-            bookmarkIds.push(result.rows[0].id);
-          }
 
-          // Delete the collection
-          await collectionService.deleteCollection(
-            collectionId,
-            ownerId,
-            deleteBookmarks
-          );
+            // Verify collection is deleted
+            const collection =
+              await collectionRepository.findById(collectionId);
+            expect(collection).toBeNull();
 
-          // Verify collection is deleted
-          const collection = await collectionRepository.findById(collectionId);
-          expect(collection).toBeNull();
-
-          if (deleteBookmarks) {
-            // Verify all bookmarks are deleted
-            for (const bookmarkId of bookmarkIds) {
-              const bookmark = await bookmarkRepository.findById(bookmarkId);
-              expect(bookmark).toBeNull();
+            if (moveToDefault) {
+              // Verify all bookmarks are moved to null collection (uncategorized)
+              for (const bookmarkId of bookmarkIds) {
+                const bookmark = await bookmarkRepository.findById(bookmarkId);
+                expect(bookmark).not.toBeNull();
+                expect(bookmark?.collectionId).toBeNull();
+              }
+            } else {
+              // Verify all bookmarks are deleted
+              for (const bookmarkId of bookmarkIds) {
+                const bookmark = await bookmarkRepository.findById(bookmarkId);
+                expect(bookmark).toBeNull();
+              }
             }
-          } else {
-            // Verify all bookmarks are moved to null collection (uncategorized)
-            for (const bookmarkId of bookmarkIds) {
-              const bookmark = await bookmarkRepository.findById(bookmarkId);
-              expect(bookmark).not.toBeNull();
-              expect(bookmark?.collectionId).toBeNull();
-            }
-          }
 
-          // Verify no orphaned bookmarks (bookmarks with non-existent collection_id)
-          const orphanedResult = await testPool.query(
-            `SELECT b.* FROM bookmarks b
+            // Verify no orphaned bookmarks (bookmarks with non-existent collection_id)
+            const orphanedResult = await testPool.query(
+              `SELECT b.* FROM bookmarks b
              LEFT JOIN collections c ON b.collection_id = c.id
              WHERE b.owner_id = $1 AND b.collection_id IS NOT NULL AND c.id IS NULL`,
-            [ownerId]
-          );
-          expect(orphanedResult.rows.length).toBe(0);
+              [ownerId]
+            );
+            expect(orphanedResult.rows.length).toBe(0);
+          } finally {
+            // Clean up test data for this specific test run
+            await testPool.query('DELETE FROM bookmarks WHERE owner_id = $1', [
+              ownerId,
+            ]);
+            await testPool.query(
+              'DELETE FROM collections WHERE owner_id = $1',
+              [ownerId]
+            );
+            await testPool.query('DELETE FROM users WHERE id = $1', [ownerId]);
+          }
         }
       ),
       { numRuns: 100 }
