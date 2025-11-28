@@ -151,7 +151,7 @@ This is a Turborepo monorepo with pnpm workspaces:
    - **MeiliSearch**: http://localhost:7700
    - **MinIO Console**: http://localhost:9001 (minioadmin/minioadmin)
 
-For detailed setup instructions, see [QUICKSTART.md](QUICKSTART.md).
+For detailed setup instructions, see [QUICKSTART.md](docs/QUICKSTART.md).
 
 ### 🎭 Demo Setup
 
@@ -393,8 +393,8 @@ The development environment includes these services:
 
 ## 📚 Documentation
 
-- **[Quick Start Guide](QUICKSTART.md)** - Get up and running in minutes
-- **[Setup Guide](SETUP.md)** - Detailed setup and configuration
+- **[Quick Start Guide](docs/QUICKSTART.md)** - Get up and running in minutes
+- **[Setup Guide](docs/SETUP.md)** - Detailed setup and configuration
 - **[API Documentation](docs/API.md)** - Complete API reference with examples
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and architecture decisions
