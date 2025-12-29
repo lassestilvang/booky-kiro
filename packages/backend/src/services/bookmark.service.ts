@@ -143,14 +143,18 @@ export class BookmarkService {
       throw new Error('Access denied');
     }
 
-    // Update bookmark
-    const updateData: Partial<Bookmark> = {
-      title: data.title,
-      excerpt: data.excerpt,
-      collectionId: data.collectionId === null ? undefined : data.collectionId,
-      coverUrl: data.coverUrl,
-      customOrder: data.customOrder,
-    };
+    // Update bookmark - only include fields that are actually provided
+    const updateData: Partial<Bookmark> = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
+    if (data.collectionId !== undefined) {
+      updateData.collectionId =
+        data.collectionId === null ? undefined : data.collectionId;
+    }
+    if (data.coverUrl !== undefined) updateData.coverUrl = data.coverUrl;
+    if (data.customOrder !== undefined)
+      updateData.customOrder = data.customOrder;
+
     const updated = await this.bookmarkRepository.update(
       bookmarkId,
       updateData
