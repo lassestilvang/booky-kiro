@@ -327,8 +327,8 @@ describe('Integration Tests', () => {
       expect(existingBookmark).toBeDefined();
 
       const updatedBookmark = await bookmarkService.updateBookmark(
-        testUserId,
         bookmark.id,
+        testUserId,
         {
           title: 'Updated Test Article',
           excerpt: 'Updated excerpt',
@@ -339,7 +339,7 @@ describe('Integration Tests', () => {
       expect(updatedBookmark.excerpt).toBe('Updated excerpt');
 
       // 6. Delete bookmark
-      await bookmarkService.deleteBookmark(testUserId, bookmark.id);
+      await bookmarkService.deleteBookmark(bookmark.id, testUserId);
 
       // 7. Verify bookmark is deleted
       const deletedBookmarks = await bookmarkService.getUserBookmarks(
@@ -584,8 +584,8 @@ describe('Integration Tests', () => {
       expect(parsedExport.bookmarks.length).toBe(2);
 
       // 3. Delete original bookmarks
-      await bookmarkService.deleteBookmark(testUserId, bookmark1.id);
-      await bookmarkService.deleteBookmark(testUserId, bookmark2.id);
+      await bookmarkService.deleteBookmark(bookmark1.id, testUserId);
+      await bookmarkService.deleteBookmark(bookmark2.id, testUserId);
 
       // 4. Import the exported data
       const parsedData = JSON.parse(exportedData);
@@ -595,23 +595,28 @@ describe('Integration Tests', () => {
       );
 
       expect(importResult).toBeDefined();
-      expect(importResult.bookmarksCreated).toBe(2);
+      expect(importResult.importedBookmarks).toBe(2);
 
-      // 5. Verify imported bookmarks
-      const importedBookmarks = await bookmarkService.getUserBookmarks(
+      // 5. Verify imported bookmarks (query all bookmarks since import creates new collection IDs)
+      const allBookmarks = await bookmarkService.getUserBookmarks(
         testUserId,
-        {
-          collectionId: collection.id,
-        }
+        {}
       );
 
-      expect(importedBookmarks.data.length).toBe(2);
+      // Filter to only the imported bookmarks by URL
+      const importedBookmarks = allBookmarks.data.filter(
+        (b) =>
+          b.url === 'https://example.com/article1' ||
+          b.url === 'https://example.com/article2'
+      );
+
+      expect(importedBookmarks.length).toBe(2);
 
       // Verify data integrity
-      const importedBookmark1 = importedBookmarks.data.find(
+      const importedBookmark1 = importedBookmarks.find(
         (b) => b.url === 'https://example.com/article1'
       );
-      const importedBookmark2 = importedBookmarks.data.find(
+      const importedBookmark2 = importedBookmarks.find(
         (b) => b.url === 'https://example.com/article2'
       );
 
@@ -646,8 +651,8 @@ describe('Integration Tests', () => {
       );
 
       expect(importResult).toBeDefined();
-      expect(importResult.bookmarksCreated).toBeGreaterThanOrEqual(2); // At least 2 bookmarks imported
-      expect(importResult.collectionsCreated).toBeGreaterThanOrEqual(1);
+      expect(importResult.importedBookmarks).toBeGreaterThanOrEqual(2); // At least 2 bookmarks imported
+      expect(importResult.importedCollections).toBeGreaterThanOrEqual(1);
 
       // Verify collections were created
       const collections =
@@ -834,8 +839,8 @@ describe('Integration Tests', () => {
       expect(existingWorkBookmark).toBeDefined();
 
       const movedBookmark = await bookmarkService.updateBookmark(
-        testUserId,
         workBookmark1.id,
+        testUserId,
         {
           collectionId: personalCollection.id,
         }
@@ -869,7 +874,11 @@ describe('Integration Tests', () => {
       expect(parsedWork.bookmarks.length).toBe(1);
 
       // 9. User deletes a collection
-      await collectionService.deleteCollection(testUserId, workCollection.id);
+      await collectionService.deleteCollection(
+        workCollection.id,
+        testUserId,
+        false
+      );
 
       // 10. Verify bookmarks moved to default collection or deleted
       const remainingCollections =
