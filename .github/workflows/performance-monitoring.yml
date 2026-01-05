@@ -75,7 +75,7 @@ jobs:
           npx vite-bundle-visualizer --open false --filename bundle-stats.html
 
       - name: Upload bundle analysis
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: bundle-analysis
           path: packages/frontend/bundle-stats.html
@@ -132,7 +132,7 @@ jobs:
           API_URL: ${{ secrets.STAGING_API_URL }}
 
       - name: Upload load test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: load-test-results
           path: |
