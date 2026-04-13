@@ -99,7 +99,7 @@ jobs:
 
       - name: Comment on PR with E2E results
         if: github.event_name == 'pull_request' && failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             github.rest.issues.createComment({
